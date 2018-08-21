@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#author: easo
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
