@@ -5,24 +5,28 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 #定义层
-def add_layer(inputs,in_size,out_size,act_func=None):
+def add_layer(inputs,in_size,out_size,n_layer,act_func=None):
     """
     inputs:输入数据
     in_size:层输入的神经元数量
     out_size:输出的神经元数量
     act_func:激活函数，默认为None
     """
-    with tf.name_scope('Layer'):
+    layer_name = 'layer%s'%n_layer
+    with tf.name_scope(layer_name):
         with tf.name_scope('Weights'):
-             Weights = tf.Variable(tf.random_normal([in_size,out_size]),name='W')
+            Weights = tf.Variable(tf.random_normal([in_size,out_size]),name='W')
+            tf.summary.histogram(layer_name+'/weights',Weights)
         with tf.name_scope('biases'):
             biases = tf.Variable(tf.zeros([1,out_size])+0.1,name='b')
+            tf.summary.histogram(layer_name+'/biases',biases)
         with tf.name_scope('wx_add_b'):
             wx_add_b = tf.matmul(inputs,Weights) + biases
         if act_func is None:
             outputs = wx_add_b
         else:
             outputs = act_func(wx_add_b)
+            tf.summary.histogram(layer_name+'/outputs',outputs)
         return outputs
 
 x_data = np.linspace(-2,2,300)[:,np.newaxis]
@@ -35,18 +39,22 @@ with tf.name_scope('Inputs'):
     xs = tf.placeholder(dtype=tf.float32,shape=[None,1],name='x_input')
     ys = tf.placeholder(dtype=tf.float32,shape=[None,1],name='y_input')
 
-l1 = add_layer(xs,1,10,act_func=tf.nn.relu)
-predict = add_layer(l1,10,1,act_func=None)
+l1 = add_layer(xs,1,10,n_layer=1,act_func=tf.nn.relu)
+predict = add_layer(l1,10,1,n_layer=2,act_func=None)
 
 #计算loss
 with tf.name_scope('loss'):
     loss = tf.reduce_mean(tf.reduce_sum(tf.square(ys-predict),reduction_indices=[1]))
+    tf.summary.scalar('loss',loss)
 with tf.name_scope('train'):
     tf_train = tf.train.GradientDescentOptimizer(0.1).minimize(loss)
 
 #初始化所有变量
 init = tf.global_variables_initializer()
 sess = tf.Session()
+
+#利用FileWriter写入
+merged = tf.summary.merge_all()
 writer = tf.summary.FileWriter("./logs",sess.graph)
 sess.run(init)
 
@@ -60,6 +68,8 @@ plt.show()
 for i in range(10000):
     sess.run(tf_train,feed_dict={xs:x_data,ys:y_data})
     if i % 50 == 0:
+        result = sess.run(merged,feed_dict={xs:x_data,ys:y_data})
+        writer.add_summary(result,i)
         #print(sess.run(loss,feed_dict={xs:x_data,ys:y_data}))
         try:
             ax.lines.remove(p_lines[0])
