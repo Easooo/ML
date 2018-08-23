@@ -56,14 +56,16 @@ predict = add_layer(xs,784,10,act_func=tf.nn.softmax)
 
 #定义loss
 cross_entropy = tf.reduce_mean(-tf.reduce_sum(ys*tf.log(predict),reduction_indices=[1])) #交叉熵
-train = tf.train.GradientDescentOptimizer(0.5).minimize(cross_entropy)
+#定义优化器
+optimizer = tf.train.GradientDescentOptimizer(0.5)
+train = optimizer.minimize(cross_entropy)
 
 sess = tf.Session()
 
 sess.run(tf.global_variables_initializer())
 
 #开始训练
-for i in range(5000):
+for i in range(20000):
     batch_xs,batch_ys = mnist.train.next_batch(100) #分批次进行训练
     sess.run(train,feed_dict={xs:batch_xs,ys:batch_ys})
     #计算准确率
