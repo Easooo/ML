@@ -29,9 +29,27 @@ def add_layer(inputs,in_size,out_size,act_func=None):
         outputs = act_func(wx_add_b)
     return outputs
 
+#定义准确率
+def compute_acc(v_xs,v_ys):
+    """
+    argvs:
+        v_xs:输入数据
+        v_ys:输出数据
+
+    return值:
+        result:准确率的结果
+    """
+    global predict
+    y_pre = sess.run(predict,feed_dict={xs:v_xs})
+    correct_predict = tf.equal(tf.argmax(y_pre,1),tf.argmax(v_ys,1))
+    acc = tf.reduce_mean(tf.cast(correct_predict,tf.float32))
+    result = sess.run(acc,feed_dict={xs:v_xs,ys:v_ys})
+    return result
+
+
 #定义占位符
 xs = tf.placeholder(tf.float32,[None,784]) #28*28
-ys = tf.placeholder(tf.float32,[None,10]) #10个输出
+ys = tf.placeholder(tf.float32,[None,10]) #10个输出 （0 - 9）
 
 #添加层
 predict = add_layer(xs,784,10,act_func=tf.nn.softmax)
@@ -44,6 +62,10 @@ sess = tf.Session()
 
 sess.run(tf.global_variables_initializer())
 
-for i in range(1000):
-    batch_xs,batch_ys = mnist.train.next_batch(100)
-    if i % 50 == 0:
+#开始训练
+for i in range(5000):
+    batch_xs,batch_ys = mnist.train.next_batch(100) #分批次进行训练
+    sess.run(train,feed_dict={xs:batch_xs,ys:batch_ys})
+    #计算准确率
+    if i % 50 == 0: 
+        print(compute_acc(mnist.test.images,mnist.test.labels))
