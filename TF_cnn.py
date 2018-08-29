@@ -111,10 +111,10 @@ saver = tf.train.Saver()
 sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
-for i in range(1000):
+for i in range(3000):
     batch_xs,batch_ys = mnist.train.next_batch(100)
     sess.run(train_step,feed_dict={xs:batch_xs,ys:batch_ys,keep_prob:0.5})
-    if i % 50 == 0:   
+    if i % 100 == 0:   
         print("准确率: ",compute_acc(mnist.test.images,mnist.test.labels))
 
 #保存
