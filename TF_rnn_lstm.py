@@ -40,11 +40,28 @@ biases = {
 
 #定义RNN
 def RNN(X,weights,biases):
-    pass
-    return None
+    """
+    argvs:
+        X(128 batch,28 steps, 28 inputs) 需要转化成 (128*28,28 inputs)
+
+    """
+    X = tf.reshape(X,[-1,n_inputs])
+    #X_in:(128*28,128)
+    X_in = tf.matmul(X,weights['in']) + biases['in']
+    #X_in:(128,28,128)
+    X_in = tf.reshape(X_in,[-1,n_steps,n_hidden_unis])
+
+    #Cell
+    lstm_cell = tf.nn.rnn_cell.BasicLSTMCell(n_hidden_unis,forget_bias=1.0,state_is_tuple=True)
+    _init_state = lstm_cell.zero_state(batch_size,dtype=tf.float32)
+    outputs,states = tf.nn.dynamic_rnn(lstm_cell,X_in,initial_state=_init_state,time_major=False)
+
+    #Hidden layers  states[1] -> mstate
+    results = tf.matmul(states[1],weights['out']) + biases['out']
+    return results
 
 predict = RNN(x,weights,biases)
-cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(predict,y))
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=predict,labels=y))
 
 #定义优化器
 optimizer = tf.train.AdamOptimizer(lr)
@@ -67,3 +84,5 @@ with tf.Session() as sess:
         if step % 20 == 0:
             print(sess.run(acc,feed_dict={x:batch_xs,y:batch_ys}))
         step += 1
+
+sess.close()
