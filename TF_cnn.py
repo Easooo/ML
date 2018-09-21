@@ -68,7 +68,7 @@ def max_pool_2x2(x):
     return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='SAME')
 
 #定义数据
-xs = tf.placeholder(tf.float32,[None,784]) #28*28
+xs = tf.placeholder(tf.float32,[None,784]) #28*28=784
 ys = tf.placeholder(tf.float32,[None,10])
 keep_prob = tf.placeholder(tf.float32)
 x_img = tf.reshape(xs,[-1,28,28,1])
@@ -77,7 +77,7 @@ x_img = tf.reshape(xs,[-1,28,28,1])
 W_conv1 = weight_var([5,5,1,32]) #patch:5*5，in size:1，out size: 32 (32个卷积核)
 b_conv1 = bias_var([32])
 h_conv1 = tf.nn.relu(conv2d(x_img,W_conv1) + b_conv1) #使其非线性化 out: 28*28*32
-h_pool1 = max_pool_2x2(h_conv1) #out：14*14*64
+h_pool1 = max_pool_2x2(h_conv1) #out：14*14*32
 
 #定义层2
 W_conv2 = weight_var([5,5,32,64]) #patch:5*5，in size:32，out size: 64 (64个卷积核)
