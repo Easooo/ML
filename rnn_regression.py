@@ -80,7 +80,7 @@ class LSTMRNN(object):
         #接收从cell里面出来的数据
         l_out_x = tf.reshape(self.cell_outputs,[-1,self.cell_size],name='2_2d')
         Ws_out = self._weight_variable([self.cell_size,self.output_size])
-        bs_out = self._weight_variable([self.output_size])
+        bs_out = self._bias_variable([self.output_size])
         with tf.name_scope('Wx_plus_b'):
             self.pred = tf.matmul(l_out_x,Ws_out) + bs_out
         
@@ -102,8 +102,9 @@ class LSTMRNN(object):
             )
             tf.summary.scalar('cost',self.cost)
 
-    def msr_error(self,y_pre,y_target):
-        return tf.square(tf.subtract(y_pre,y_target))
+    def msr_error(self,logits,labels):
+        #这里之前使用msr_error(self,y_pre,y_target) 新版本的softmax_loss_function不能缺省形参
+        return tf.square(tf.subtract(logits,labels)) 
 
     def _weight_variable(self,shape,name='weights'):
         initializer = tf.random_normal_initializer(mean=0,stddev=1.)
@@ -114,36 +115,37 @@ class LSTMRNN(object):
         return tf.get_variable(shape=shape,initializer=initializer,name=name)
 
 if __name__ == '__main__':
+    #创建类
     model = LSTMRNN(TIME_STEPS,INPUT_SIZE,OUTPUT_SIZE,CELL_SIZE,BATCH_SIZE)
     sess = tf.Session()
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter("./logs",sess.graph)
     sess.run(tf.global_variables_initializer())
-    plt.ion()
-    plt.show()
-    for i in range(300):
-        seq,res,xs = get_batch()
-        if i == 0:
-            feed_dict = {
-                model.xs:seq,
-                model.ys:res
-            }
-        else:
-            feed_dict = {
-                model.xs:seq,
-                model.ys:res,
-                model.cell_init_state:state
-            }
-        _,cost,state,pred = sess.run(
-            [model.train_op,model.cost,model.cell_final_state,model.pred],
-            feed_dict=feed_dict
-        )
-        plt.plot(xs[0,:],res[0].flatten(),'r',xs[0,:],pred.flatten()[:TIME_STEPS],'b--')
-        plt.ylim((-1.2,1.2))
-        plt.draw()
-        plt.pause(0.3)
+    # plt.ion()
+    # plt.show()
+    # for i in range(300):
+    #     seq,res,xs = get_batch()
+    #     if i == 0:
+    #         feed_dict = {
+    #             model.xs:seq,
+    #             model.ys:res
+    #         }
+    #     else:
+    #         feed_dict = {
+    #             model.xs:seq,
+    #             model.ys:res,
+    #             model.cell_init_state:state
+    #         }
+    #     _,cost,state,pred = sess.run(
+    #         [model.train_op,model.cost,model.cell_final_state,model.pred],
+    #         feed_dict=feed_dict
+    #     )
+    #     plt.plot(xs[0,:],res[0].flatten(),'r',xs[0,:],pred.flatten()[:TIME_STEPS],'b--')
+    #     plt.ylim((-1.2,1.2))
+    #     plt.draw()
+    #     plt.pause(0.3)
 
-        if i % 20 == 0:
-            print('cost : ',round(0,4))
-            result = sess.run(merged,feed_dict)
-            writer.add_summary(result,i)
+    #     if i % 20 == 0:
+    #         print('cost : ',round(0,4))
+    #         result = sess.run(merged,feed_dict)
+    #         writer.add_summary(result,i )
