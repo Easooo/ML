@@ -22,12 +22,12 @@ def get_batch():
     """
     global BATCH_START,TIME_STEPS
     #xs -> (50batch,20steps)
-    xs = np.arange(BATCH_START,BATCH_START+TIME_STEPS*BATCH_SIZE).reshape((BATCH_SIZE,TIME_STEPS)) #50行 20列
+    xs = np.arange(BATCH_START,BATCH_START+TIME_STEPS*BATCH_SIZE).reshape((BATCH_SIZE,TIME_STEPS))/(10*np.pi) #50行 20列
     seq = np.sin(xs)
     res = np.cos(xs)
     BATCH_START += TIME_STEPS
-    plt.plot(xs[0,:],res[0,:],'r',xs[0,:],seq[0,:],'b--')
-    plt.show()
+    # plt.plot(xs[0,:],res[0,:],'r',xs[0,:],seq[0,:],'b--')
+    # plt.show()
     return [seq[:,:,np.newaxis],res[:,:,np.newaxis],xs]
 
 class LSTMRNN(object):
@@ -121,31 +121,31 @@ if __name__ == '__main__':
     merged = tf.summary.merge_all()
     writer = tf.summary.FileWriter("./logs",sess.graph)
     sess.run(tf.global_variables_initializer())
-    # plt.ion()
-    # plt.show()
-    # for i in range(300):
-    #     seq,res,xs = get_batch()
-    #     if i == 0:
-    #         feed_dict = {
-    #             model.xs:seq,
-    #             model.ys:res
-    #         }
-    #     else:
-    #         feed_dict = {
-    #             model.xs:seq,
-    #             model.ys:res,
-    #             model.cell_init_state:state
-    #         }
-    #     _,cost,state,pred = sess.run(
-    #         [model.train_op,model.cost,model.cell_final_state,model.pred],
-    #         feed_dict=feed_dict
-    #     )
-    #     plt.plot(xs[0,:],res[0].flatten(),'r',xs[0,:],pred.flatten()[:TIME_STEPS],'b--')
-    #     plt.ylim((-1.2,1.2))
-    #     plt.draw()
-    #     plt.pause(0.3)
+    plt.ion()
+    plt.show()
+    for i in range(300):
+        seq,res,xs = get_batch()
+        if i == 0:
+            feed_dict = {
+                model.xs:seq,
+                model.ys:res
+            }
+        else:
+            feed_dict = {
+                model.xs:seq,
+                model.ys:res,
+                model.cell_init_state:state
+            }
+        _,cost,state,pred = sess.run(
+            [model.train_op,model.cost,model.cell_final_state,model.pred],
+            feed_dict=feed_dict
+        )
+        plt.plot(xs[0,:],res[0].flatten(),'r',xs[0,:],pred.flatten()[:TIME_STEPS],'b--')
+        plt.ylim((-1.2,1.2))
+        plt.draw()
+        plt.pause(0.3)
 
-    #     if i % 20 == 0:
-    #         print('cost : ',round(0,4))
-    #         result = sess.run(merged,feed_dict)
-    #         writer.add_summary(result,i )
+        if i % 20 == 0:
+            print('cost : ',round(cost,4))
+            result = sess.run(merged,feed_dict)
+            writer.add_summary(result,i )
