@@ -11,7 +11,7 @@ BATCH_SIZE = 50
 INPUT_SIZE = 1
 OUTPUT_SIZE = 1
 CELL_SIZE = 10
-LR = 0.006
+LR = 0.006 #学习速率
 BATCH_START_TEST = 0
 
 def get_batch():

@@ -71,7 +71,7 @@ def max_pool_2x2(x):
 xs = tf.placeholder(tf.float32,[None,784]) #28*28=784
 ys = tf.placeholder(tf.float32,[None,10])
 keep_prob = tf.placeholder(tf.float32)
-x_img = tf.reshape(xs,[-1,28,28,1])
+x_img = tf.reshape(xs,[-1,28,28,1]) #-1 表示先不考虑输入的图片例子有多少 ， 1 表示黑白
 
 #定义 层1
 W_conv1 = weight_var([5,5,1,32]) #patch:5*5，in size:1，out size: 32 (32个卷积核)
