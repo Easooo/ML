@@ -26,7 +26,7 @@ class GA(object):
         self.pop = np.random.randint(*DNA_bound, size=(pop_size, DNA_size)).astype(np.int8)  # int8 for convert to ASCII
 
     def translateDNA(self, DNA):                 # 将数组通过ascii编码转换为字符串
-        return DNA.tostring().decode('ascii')
+        return DNA.tostring().deco de('ascii')
 
     def get_fitness(self):
         #fitness:shape=(1,DNA_SIZE)                     # count how many character matches
