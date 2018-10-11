@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 #author: easo
-import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt 
-from tensorflow.examples.tutorials.mnist import input_data
 DNA_SIZE = 10            # DNA length
 POP_SIZE = 100           # population size
 CROSS_RATE = 0.8         # mating probability (DNA crossover)
