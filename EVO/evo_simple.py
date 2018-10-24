@@ -63,7 +63,7 @@ for _ in range(N_GENERATIONS):
     F_values = F(translateDNA(pop))    # compute function value by extracting DNA
     # print(F_values)
     # something about plotting
-    if 'sca' in globals():
+    if 'sca' is in globals():
         sca.remove() #sca：可视化散点图
     sca = plt.scatter(translateDNA(pop), F_values, s=200, lw=0, c='red', alpha=0.5);
     plt.pause(0.05)
