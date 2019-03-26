@@ -1,5 +1,5 @@
-# Just some practice
-平时无聊练练手，主要是熟悉一下tf的使用，精髓在于：
- >  import tensorflow as tf
+﻿# 一些ML的运用和项目
+此外熟悉tf和pytorch的使用，待开荒的内容：数据分析
+ 
 
-←_←
+
