@@ -65,7 +65,7 @@ sess = tf.Session()
 sess.run(tf.global_variables_initializer())
 
 #开始训练
-for i in range(20000):
+for i in range(4000):
     batch_xs,batch_ys = mnist.train.next_batch(100) #分批次进行训练
     sess.run(train,feed_dict={xs:batch_xs,ys:batch_ys})
     #计算准确率
