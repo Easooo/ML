@@ -18,11 +18,12 @@ def get_data(originCsvData,dataType='trian'):
     
     '''
     #trainData,testData,vaildData
-    assert dataType in ('trian','test','valid')
-    dataUsage = {'trian':'Training','test':'PublicTest','valid':'PrivateTest'}
+    assert dataType in ('train','test','valid')
+    dataUsage = {'train':'Training','test':'PublicTest','valid':'PrivateTest'}
     dataTmp = originCsvData[originCsvData['Usage'] == dataUsage[dataType]].reset_index(drop=True)
-    labels = pd.get_dummies(dataTmp['emotion']).as_matrix()      #这里需要了解原文件的格式
-    labels = torch.IntTensor(labels)       #将label转换为tensor
+    labelsTmp = pd.get_dummies(dataTmp['emotion']).as_matrix()      #这里需要了解原文件的格式
+    labelsTmp = torch.LongTensor(labelsTmp)
+    _,labels = torch.max(labelsTmp,-1)       #将label转换为tensor
     pixelsList = dataTmp['pixels'].tolist()
     imgTmp = []
     #源文件中的像素是一整行的，这里需要将其reshape为48*48

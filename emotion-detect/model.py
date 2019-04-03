@@ -9,7 +9,8 @@ from tensorboardX import SummaryWriter
 import torchvision.transforms as transforms
 import torchvision as tv
 import torch.optim as optim
-
+from fer import Image,np
+import os
 
 class ResidualBlock(nn.Module):
     def __init__(self, inchannel, outchannel, stride=1):
@@ -71,3 +72,76 @@ class ResNet(nn.Module):
 
 def ResNet18():
     return ResNet(ResidualBlock)
+
+def train_model(epoch,trainLoader,testLoader,savePath=None):
+    device = torch.device("cpu")
+    net = ResNet18()
+    LR = 0.001
+    optimizer = optim.SGD(net.parameters(),lr=LR,momentum=0.9)
+    loss_func = nn.CrossEntropyLoss()
+    for ep in range(epoch):        
+        sumLoss = 0
+        acc = 0
+        net.train()
+        for i,trainData in enumerate(trainLoader):
+            inputData,targets = trainData
+            inputData,targets = inputData.to(device),targets.to(device)
+            optimizer.zero_grad()
+            outputTrain = net(inputData)
+            loss = loss_func(outputTrain,targets)
+            loss.backward()
+            optimizer.step()
+            sumLoss += loss
+
+            #每20个batch算一次平均loss:
+            if (i % 20 == 0):
+                print("Batch:%f,loss:%f"%(i,sumLoss/20))
+                sumLoss = 0
+        
+        totalImg = 0
+        accImg = 0
+        with torch.no_grad():
+            for testData in testLoader:
+                net.eval()
+                inputDataTest,labels = testData
+                inputDataTest,labels = inputDataTest.to(device),labels.to(device)
+                outputTest = net(inputDataTest)
+                _ , predicted = torch.max(outputTest,-1)
+                totalImg +=  labels.size(0)
+                accImg += (predicted == outputTest).sum()        
+            print("acc: %f %%" %((accImg/totalImg)*100))
+            totalImg = 0
+            accImg = 0
+
+        if savePath is not None:
+            torch.save(net.state_dict(), savePath)
+            print('Restore model sucsses!!')
+
+
+def valid_model(savePath,filePath):
+    net = ResNet18()
+    net.load_state_dict(torch.load(savePath))
+    classes = ('Angry', 'Disgust', 'Fear', 'Happy', 'Sad', 'Surprise', 'Neutral')
+    fileDir = os.listdir(filePath)
+    assert fileDir is ['0', '1', '2', '3', '4', '5', '6']
+    while True:
+        emotionDir = np.random.choice(fileDir)
+        print("emotion classes:",classes[int(emotionDir)])
+        emotionFiles = os.listdir(emotionDir)
+        imgFiles = np.random.choice(emotionFiles)
+        img = Image.open(filePath+'/'+emotionDir+'/'+imgFiles)
+        imgArray = np.array(img)
+        imgArray = np.multiply(imgArray,1/255) 
+        imgArray = imgArray[np.newaxis,np.newaxis,:]
+        imgTensor = torch.from_numpy(imgArray)
+        del imgArray
+        with torch.no_grad():
+            net.eval()
+            output = net(imgTensor)
+            _ , predicted = torch.max(output,-1)
+            print("predict:",classes[predicted[0]])
+            img.show()
+        key = input()
+        print("press 'exit' to exit or any key to continute")
+        if key == 'exit':
+            break
