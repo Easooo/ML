@@ -1,1 +1,5 @@
 *.csv
+*.jpg
+*.rar
+*.gz
+./EDEN/data/

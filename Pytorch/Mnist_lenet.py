@@ -83,7 +83,8 @@ def train_step(net,device,train_loader,tes_loader,epoch):
             total += labels_test.size(0) #统计50个batch 图片的总个数
             acc += (predicted == labels_test).sum()  #统计50个batch 正确分类的个数
         print("acc:%f"%(acc.item()/total))
-    
+    torch.save(net.state_dict(), './Pytorch/model/checkpoint-'+str(epoch)+'.pth')
+
 def main():
     device = torch.device("cpu")
     net = LeNet().to(device)
@@ -95,6 +96,12 @@ if __name__ == '__main__':
     # # conv1 = model.conv1
     # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # print(device)
-    main()
 
+    #main()
+
+
+    net = LeNet()
+    net.load_state_dict(torch.load('./Pytorch/model/checkpoint-1.pth'))
+    train_loader,test_loader = DataLoad()
+    totalPara = sum(p.numel() for p in net.parameters())
 

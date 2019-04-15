@@ -48,35 +48,38 @@ def mutate(child):
     return child
 
 
-pop = np.random.randint(2, size=(POP_SIZE, DNA_SIZE))   # initialize the pop DNA，pop：种群
 
-plt.ion()       # something about plotting
-x = np.linspace(*X_BOUND, 200)
-plt.plot(x, F(x))
+if __name__ == '__main__':
+    
+    pop = np.random.randint(2, size=(POP_SIZE, DNA_SIZE))   # initialize the pop DNA，pop：种群
 
-for _ in range(N_GENERATIONS):
-    # if _  >= 1 :
-    #     if pop_copy.any() == pop.any():
-    #         print("True")
-    #     else:
-    #         print("False!!!!")
-    F_values = F(translateDNA(pop))    # compute function value by extracting DNA
-    # print(F_values)
-    # something about plotting
-    if 'sca' is in globals():
-        sca.remove() #sca：可视化散点图
-    sca = plt.scatter(translateDNA(pop), F_values, s=200, lw=0, c='red', alpha=0.5);
-    plt.pause(0.05)
+    plt.ion()       # something about plotting
+    x = np.linspace(*X_BOUND, 200)
+    plt.plot(x, F(x))
 
-    # GA part (evolution)
-    fitness = get_fitness(F_values)
-    print("Most fitted DNA: ", pop[np.argmax(fitness), :])
-    pop = select(pop, fitness)    #按照适应度选择种群
-    pop_copy = pop.copy()    #拷贝
-    for parent in pop:
-        child = crossover(parent, pop_copy)
-        child = mutate(child)
-        parent[:] = child       # parent is replaced by its child
+    for _ in range(N_GENERATIONS):
+        # if _  >= 1 :
+        #     if pop_copy.any() == pop.any():
+        #         print("True")
+        #     else:
+        #         print("False!!!!")
+        F_values = F(translateDNA(pop))    # compute function value by extracting DNA
+        # print(F_values)
+        # something about plotting
+        if 'sca'  in globals():
+            sca.remove() #sca：可视化散点图
+        sca = plt.scatter(translateDNA(pop), F_values, s=200, lw=0, c='red', alpha=0.5);
+        plt.pause(0.05)
 
-plt.ioff()
-plt.show()
+        # GA part (evolution)
+        fitness = get_fitness(F_values)
+        print("Most fitted DNA: ", pop[np.argmax(fitness), :])
+        pop = select(pop, fitness)    #按照适应度选择种群
+        pop_copy = pop.copy()    #拷贝是因为pop会改变，需要用之前的copy对象进行交叉操作
+        for parent in pop:
+            child = crossover(parent, pop_copy)
+            child = mutate(child)
+            parent[:] = child       # parent is replaced by its child
+
+    plt.ioff()
+    plt.show()
