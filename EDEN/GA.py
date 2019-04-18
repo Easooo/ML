@@ -196,6 +196,7 @@ def createFc(fcUnits,actTypeForFc):
     layer[-1] = actType
     return layer
 
+
 if __name__ == '__main__':
     test = Genetic()
     pop = test.createPopulation(100)
