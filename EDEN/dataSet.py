@@ -7,7 +7,7 @@ import torch
 import torchvision.transforms as transforms
 import torchvision as tv
 
-def data_loader(transform,dataType='MNIST',batchSize=16):
+def dataLoader(transform,dataType='MNIST',batchSize=16):
     '''
     argvs:
         transform:数据转换格式
