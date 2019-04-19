@@ -14,8 +14,8 @@ class Genetic(object):
     def __init__(self):
         self.populationSize = None
         self.layerType = ['conv','fc','dropout']
-        self.actTypeForConv = ['liner','leaky relu','prelu','relu']
-        self.actTypeForFc = ['liner','sigmoid','softmax','relu']  #注如果是最后一层FC的话是没有relu的
+        self.actTypeForConv = ['linear','leaky relu','prelu','relu']
+        self.actTypeForFc = ['linear','sigmoid','softmax','relu']  #注如果是最后一层FC的话是没有relu的
         self.learningRate = np.arange(1e-4,1e-3,1e-5)
         self.nHiddenLayers = np.arange(2,8)  #隐含层的范围为2-7,即神经网络层数范围为4-9(算上input和output)
         self.fcUnits = np.arange(10,101)   #10 - 100,这个fc是隐含层中的fc，不是最后的fc

@@ -1,18 +1,63 @@
 #author:Easo
 #date:2019年4月18日
 
-import networks
+from networks import *
 from dataSet import dataLoader
-from GA import Genetic
+from Ga import Genetic
 
-def trainStep(popMember,inputSize,inputChannel,trainLoader,testLoader,epoch):
+def trainStep(popMember,inputSize,inputChannel,epoch):
     '''
     注意:softmax和其它激活函数 使用的损失函数不一样！需要额外判断
     '''
-    pass 
+
+    netList = popMember[1]  #网络列表
+    lossFunc = nn.NLLLoss() if netList[-1][-1] == 'softmax' else nn.CrossEntropyLoss()  
+    transformMnist = tv.transforms.ToTensor()
+    trainLoader,testloader =  dataLoader(transformMnist,dataType='MNIST',batchSize=16)
+    autoNet = makeNet(popMember,inputSize,inputChannel)
+    device = torch.device("cpu")
+    optimizer = optim.Adam(autoNet.parameters(),lr=popMember[2])   #ADAM优化器
+
+    for ep in range(epoch):
+        sum_loss = 0
+        for i,train_data in enumerate(trainLoader):
+            input_data,labels = train_data  #train_data 是一个元组
+            input_data,labels = input_data.to(device),labels.to(device)
+            optimizer.zero_grad()
+            output = autoNet(input_data)
+            loss = lossFunc(output,labels)
+            loss.backward()
+            optimizer.step()
+            sum_loss += loss.item()
+
+            if i % 100 == 0:
+                print("loss:%f,epoch:%d"%(sum_loss/100,ep))
+                sum_loss = 0
+        #计算准确率
+
+        acc = 0
+        total = 0
+        for test_data in testloader:
+            input_test,labels_test = test_data
+            input_test,labels_test = input_test.to(device),labels_test.to(device)
+            output_test = autoNet(input_test)
+            _, predicted = torch.max(output_test, 1)  #输出得分最高的类
+            total += labels_test.size(0) #统计50个batch 图片的总个数
+            acc += (predicted == labels_test).sum()  #统计50个batch 正确分类的个数
+        print("acc:%f"%(acc.item()/total))
 
 def makeNet(popMember,inputSize,inputChannel):
-    pass
+    '''
+    生成网络类
+    '''
+    net = AutoNet(popMember,inputSize,inputChannel)
+    return net
+
+if __name__ == "__main__":
+    test = Genetic()
+    testPop = test.createPopulation(100)
+    popMember = testPop[60]
+    trainStep(popMember,28,1,1)  
 
 
 

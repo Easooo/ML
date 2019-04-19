@@ -22,7 +22,7 @@ class AutoNet(nn.Module):
             inputSize:输入图片的Size
         '''
         super(AutoNet,self).__init__()
-        self.layerNums = popMember[0] + 1
+        self.layerIndex = 0
         self.netMember = popMember[1]
         self.dataSize = inputSize
         self.convNums = 0
@@ -31,7 +31,9 @@ class AutoNet(nn.Module):
         self.poolNums = 0
         self.conv = None
         self.fc = None
-        self.featureMap = 0
+        self.featureMap = inputChannel
+        self.featureMapAfterConv = 0
+        self.midFcFlag = False
         convList = []
         fcList = []
         actFunc = {'linear':None,    #linear即激活函数为空，保持原有的线性结构
@@ -45,63 +47,92 @@ class AutoNet(nn.Module):
             if layer[0] == 0:   
                 ##########如果是卷积层###########
                 self.convNums += 1
-                convList.append(('conv'+str(self.convNums),
-                                  nn.Conv2d(inputChannel,layer[3],layer[4],stride=1)
-                ))
                 padTmp = int((layer[4]-1)/2)
-                self.dataSize = caculateSize(self.dataSize,layer[4],padTmp,1)   #计算一次datasize
+                convList.append((str(self.layerIndex)+'conv'+str(self.convNums),
+                                nn.Conv2d(self.featureMap,out_channels=int(layer[3]),kernel_size=layer[4],padding=padTmp)
+                ))
+                self.layerIndex += 1
+                self.dataSize = caculateSize(self.dataSize,layer[4],padTmp,1)   #计算一次datasize    
                 self.featureMap = layer[3]
+                self.featureMapAfterConv = self.featureMap
                 if layer[2] is not None:  #池化层
                     self.poolNums += 1
-                    convList.append(('maxpool'+str(self.poolNums),
-                                    nn.MaxPool2d(layer[2],stride=layer[2])
+                    convList.append((str(self.layerIndex)+'maxpool'+str(self.poolNums),
+                                    nn.MaxPool2d(int(layer[2]),stride=int(layer[2]))
                     ))
+                    self.layerIndex += 1
                     self.dataSize = caculateSize(self.dataSize,layer[2],0,layer[2])
                 #添加激活层
                 if layer[-1] != 'linear':
-                    convList.append(('conv '+layer[-1],
+                    convList.append((str(self.layerIndex)+'conv '+layer[-1],
                                      actFunc[layer[-1]]
                     ))
+                    self.layerIndex += 1
                 if layer[1] is not None: #如果是dropout层
                     for do in layer[1]:
                         self.dropOutNums += 1
-                        convList.append(('dropout'+str(self.dropOutNums),
+                        convList.append((str(self.layerIndex)+'dropout'+str(self.dropOutNums),
                                         nn.Dropout(do)
                         ))
+                        self.layerIndex += 1  
             elif layer[0] == 1: 
                 #########如果是全连接层############
+                self.midFcFlag = True
                 self.fcNums += 1
-                fcList.append(('fc'+str(self.fcNums),
-                                nn.Linear(self.featureMap,layer[2])
-                ))
-                self.featureMap = layer[2]
+                if self.fcNums == 1:
+                    fcList.append((str(self.layerIndex)+'fc'+str(self.fcNums),
+                                    nn.Linear(int(self.featureMapAfterConv*self.dataSize*self.dataSize),
+                                              int(layer[2])
+                                    )
+                    ))
+                    self.layerIndex += 1
+                    self.featureMap = layer[2]
+                else:
+                    fcList.append((str(self.layerIndex)+'fc'+str(self.fcNums),
+                                    nn.Linear(int(self.featureMap),int(layer[2]))
+                    ))
+                    self.layerIndex += 1
+                    self.featureMap = layer[2]
                 #添加激活层
                 if layer[-1] != 'linear':
-                    fcList.append(('fc '+layer[-1],
+                    fcList.append((str(self.layerIndex)+'fc '+layer[-1],
                                      actFunc[layer[-1]]
                     ))
+                    self.layerIndex += 1
                 if layer[1] is not None: #如果是dropout层
                     for do in layer[1]:
                         self.dropOutNums += 1
-                        fcList.append(('dropout'+str(self.dropOutNums),
+                        fcList.append((str(self.layerIndex)+'dropout'+str(self.dropOutNums),
                                         nn.Dropout(do)
                         ))
+                        self.dropOutNums += 1
             else:#最后一层fc
                 self.fcNums += 1
-                fcList.append(('lastfc'+str(self.fcNums),
-                                nn.Linear(self.featureMap,layer[1])),
-                              ('lastfc '+layer[-1],actFunc[layer[-1]])
-
-                )
+                if self.midFcFlag:   #如果有中间FC，输入的神经元数为上一层fc的输出神经元数
+                    fcList.append((str(self.layerIndex)+'lastfc'+str(self.fcNums),
+                                    nn.Linear(int(self.featureMap),int(layer[1]))
+                    ))
+                else:
+                    fcList.append((str(self.layerIndex)+'lastfc'+str(self.fcNums),
+                                    nn.Linear(int(self.featureMapAfterConv*self.dataSize*self.dataSize),int(layer[1]))
+                    ))                    
+                self.dropOutNums += 1
+                fcList.append((str(self.layerIndex)+'lastfc '+layer[-1],
+                                actFunc[layer[-1]]
+                ))
+                self.dropOutNums += 1
         self.conv = nn.Sequential(OrderedDict(convList))
         self.fc = nn.Sequential(OrderedDict(fcList))
 
     def forward(self,inputData):
         #定义前向过程
         convRes = self.conv(inputData)
-        res = self.fc(convRes)
+        convOnedim = convRes.view(-1,)
+        res = self.fc(convOnedim)
         return res
-                
+
+
+
                 
 def caculateSize(inputsize,kernelSize,padding,stride):
     '''
@@ -111,12 +142,7 @@ def caculateSize(inputsize,kernelSize,padding,stride):
         padding:填充
         stride:步长
     '''
-    assert padding == int((kernelSize-1)/2)
     outputSize = int((inputsize + 2*padding - kernelSize)/stride) + 1
     return outputSize
 
-
-if __name__ == "__main__":
-    a = caculateSize(28,5,2,1)
-    pass
     
