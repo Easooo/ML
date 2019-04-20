@@ -22,7 +22,7 @@ class AutoNet(nn.Module):
             inputSize:输入图片的Size
         '''
         super(AutoNet,self).__init__()
-        self.layerIndex = 0
+        self.layerIndex = 1000
         self.netMember = popMember[1]
         self.dataSize = inputSize
         self.convNums = 0
@@ -48,7 +48,7 @@ class AutoNet(nn.Module):
                 ##########如果是卷积层###########
                 self.convNums += 1
                 padTmp = int((layer[4]-1)/2)
-                convList.append((str(self.layerIndex)+'conv'+str(self.convNums),
+                convList.append(('net '+str(self.layerIndex),
                                 nn.Conv2d(self.featureMap,out_channels=int(layer[3]),kernel_size=layer[4],padding=padTmp)
                 ))
                 self.layerIndex += 1
@@ -57,21 +57,21 @@ class AutoNet(nn.Module):
                 self.featureMapAfterConv = self.featureMap
                 if layer[2] is not None:  #池化层
                     self.poolNums += 1
-                    convList.append((str(self.layerIndex)+'maxpool'+str(self.poolNums),
+                    convList.append(('net '+str(self.layerIndex),
                                     nn.MaxPool2d(int(layer[2]),stride=int(layer[2]))
                     ))
                     self.layerIndex += 1
                     self.dataSize = caculateSize(self.dataSize,layer[2],0,layer[2])
                 #添加激活层
                 if layer[-1] != 'linear':
-                    convList.append((str(self.layerIndex)+'conv '+layer[-1],
+                    convList.append(('net '+str(self.layerIndex),
                                      actFunc[layer[-1]]
                     ))
                     self.layerIndex += 1
                 if layer[1] is not None: #如果是dropout层
                     for do in layer[1]:
                         self.dropOutNums += 1
-                        convList.append((str(self.layerIndex)+'dropout'+str(self.dropOutNums),
+                        convList.append(('net '+str(self.layerIndex),
                                         nn.Dropout(do)
                         ))
                         self.layerIndex += 1  
@@ -80,7 +80,7 @@ class AutoNet(nn.Module):
                 self.midFcFlag = True
                 self.fcNums += 1
                 if self.fcNums == 1:
-                    fcList.append((str(self.layerIndex)+'fc'+str(self.fcNums),
+                    fcList.append(('net '+str(self.layerIndex),
                                     nn.Linear(int(self.featureMapAfterConv*self.dataSize*self.dataSize),
                                               int(layer[2])
                                     )
@@ -88,39 +88,40 @@ class AutoNet(nn.Module):
                     self.layerIndex += 1
                     self.featureMap = layer[2]
                 else:
-                    fcList.append((str(self.layerIndex)+'fc'+str(self.fcNums),
+                    fcList.append(('net '+str(self.layerIndex),
                                     nn.Linear(int(self.featureMap),int(layer[2]))
                     ))
                     self.layerIndex += 1
                     self.featureMap = layer[2]
                 #添加激活层
                 if layer[-1] != 'linear':
-                    fcList.append((str(self.layerIndex)+'fc '+layer[-1],
+                    fcList.append(('net '+str(self.layerIndex),
                                      actFunc[layer[-1]]
                     ))
                     self.layerIndex += 1
                 if layer[1] is not None: #如果是dropout层
                     for do in layer[1]:
-                        self.dropOutNums += 1
-                        fcList.append((str(self.layerIndex)+'dropout'+str(self.dropOutNums),
+                        fcList.append(('net '+str(self.layerIndex),
                                         nn.Dropout(do)
                         ))
+                        self.layerIndex += 1 
                         self.dropOutNums += 1
             else:#最后一层fc
                 self.fcNums += 1
                 if self.midFcFlag:   #如果有中间FC，输入的神经元数为上一层fc的输出神经元数
-                    fcList.append((str(self.layerIndex)+'lastfc'+str(self.fcNums),
+                    fcList.append(('net '+str(self.layerIndex),
                                     nn.Linear(int(self.featureMap),int(layer[1]))
                     ))
+                    self.layerIndex += 1
                 else:
-                    fcList.append((str(self.layerIndex)+'lastfc'+str(self.fcNums),
+                    fcList.append(('net '+str(self.layerIndex),
                                     nn.Linear(int(self.featureMapAfterConv*self.dataSize*self.dataSize),int(layer[1]))
-                    ))                    
-                self.dropOutNums += 1
-                fcList.append((str(self.layerIndex)+'lastfc '+layer[-1],
+                    ))
+                    self.layerIndex += 1                    
+                fcList.append(('net '+str(self.layerIndex),
                                 actFunc[layer[-1]]
                 ))
-                self.dropOutNums += 1
+                self.layerIndex += 1
         self.conv = nn.Sequential(OrderedDict(convList))
         self.fc = nn.Sequential(OrderedDict(fcList))
 
