@@ -5,6 +5,8 @@ from networks import *
 from dataSet import dataLoader
 from Ga import Genetic
 import os
+import pandas as pd 
+
 
 def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
     '''
@@ -58,7 +60,8 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
     saveDir = './model/' + str(popIndex)
     os.mkdir(saveDir)
     totalPara = sum(p.numel() for p in autoNet.parameters())
-    torch.save(autoNet.state_dict(), saveDir+'/'+'ckp-'+str(epoch)+'-'+str(acc)+'-'+str(totalPara)+'.pth')
+    popMember[-1][0],popMember[-1][1] = acc,totalPara
+    torch.save(autoNet.state_dict(), saveDir+'/'+'ckp-'+str(epoch)+'-'+str(acc)+'-'+str(totalPara)+'-'+'.pth')
 
 
 def makeNet(popMember,inputSize,inputChannel):
@@ -71,6 +74,20 @@ def makeNet(popMember,inputSize,inputChannel):
 if __name__ == "__main__":
     test = Genetic()
     testPop = test.createPopulation(100)
+
+    nHiden = [i[0] for i in testPop]
+    netList = [i[1] for i in testPop]
+    lrList = [i[2] for i in testPop]
+    accParaList = [i[3] for i in testPop]
+
+    saveDict = {'layernums':nHiden,
+                'net':netList,
+                'lr':lrList,
+                'acc&ParaList':accParaList
+    }
+    df = pd.DataFrame(saveDict)
+    df.to_csv('./pop.csv')
+
     for index,popMember in enumerate(testPop):
         trainStep(popMember,index,28,1,4)  
 

@@ -83,7 +83,7 @@ class Genetic(object):
             lr = np.random.rand()/100   #随机初始化学习率
             chromosome.append(lr)
             acc,netParaNums= 0,0    #准确率和网络参数数量
-            chromosome.append((acc,netParaNums))
+            chromosome.append([acc,netParaNums])
             popMember.append(chromosome)
         return popMember       
 

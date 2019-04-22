@@ -34,9 +34,6 @@ class AutoNet(nn.Module):
         self.featureMap = inputChannel
         self.featureMapAfterConv = 0
         self.midFcFlag = False
-        self.setSizeOne = False
-        #在卷积和池化操作中，可能会出现inputsize小于kernelsize的情况，
-        #在这种情况下，直接强制设置输出的size为1（在种群中被淘汰）
         convList = []
         fcList = []
         actFunc = {'linear':None,    #linear即激活函数为空，保持原有的线性结构
@@ -61,11 +58,14 @@ class AutoNet(nn.Module):
                 self.featureMapAfterConv = self.featureMap
                 if layer[2] is not None:  #池化层
                     self.poolNums += 1
+                    poolKernel = int(layer[2]) if self.dataSize > int(layer[2]) else int(self.dataSize)
+                    #在卷积和池化操作中，可能会出现inputsize小于kernelsize的情况，
+                    #在这种情况下，直接强制设置输出的size为1（在种群中被淘汰）
                     convList.append(('net '+str(self.layerIndex),
-                                    nn.MaxPool2d(int(layer[2]),stride=int(layer[2]))
+                                     nn.MaxPool2d(poolKernel,stride=int(layer[2]))
                     ))
                     self.layerIndex += 1
-                    self.dataSize = caculateSize(self.dataSize,layer[2],0,layer[2])
+                    self.dataSize = caculateSize(self.dataSize,poolKernel,0,layer[2])
                 #添加激活层
                 if layer[-1] != 'linear':
                     convList.append(('net '+str(self.layerIndex),
