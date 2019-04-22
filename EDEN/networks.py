@@ -34,6 +34,9 @@ class AutoNet(nn.Module):
         self.featureMap = inputChannel
         self.featureMapAfterConv = 0
         self.midFcFlag = False
+        self.setSizeOne = False
+        #在卷积和池化操作中，可能会出现inputsize小于kernelsize的情况，
+        #在这种情况下，直接强制设置输出的size为1（在种群中被淘汰）
         convList = []
         fcList = []
         actFunc = {'linear':None,    #linear即激活函数为空，保持原有的线性结构
@@ -41,13 +44,14 @@ class AutoNet(nn.Module):
                     'prelu':nn.PReLU(),
                     'relu':nn.ReLU(),
                     'sigmoid':nn.Sigmoid(),
-                    'softmax':nn.LogSoftmax()
+                    'softmax':nn.LogSoftmax(dim=1)
         }
         for layer in self.netMember:
             if layer[0] == 0:   
                 ##########如果是卷积层###########
                 self.convNums += 1
-                padTmp = int((layer[4]-1)/2)
+                padTmp = int((layer[4])/2)
+                #k=1,p=0; k=2,p=1; k=3,p=1; k=4,p=2; k=5,p=2; k=6,p=3
                 convList.append(('net '+str(self.layerIndex),
                                 nn.Conv2d(self.featureMap,out_channels=int(layer[3]),kernel_size=layer[4],padding=padTmp)
                 ))
@@ -117,18 +121,19 @@ class AutoNet(nn.Module):
                     fcList.append(('net '+str(self.layerIndex),
                                     nn.Linear(int(self.featureMapAfterConv*self.dataSize*self.dataSize),int(layer[1]))
                     ))
-                    self.layerIndex += 1                    
-                fcList.append(('net '+str(self.layerIndex),
-                                actFunc[layer[-1]]
-                ))
-                self.layerIndex += 1
+                    self.layerIndex += 1
+                if layer[-1] != 'linear':                    
+                    fcList.append(('net '+str(self.layerIndex),
+                                    actFunc[layer[-1]]
+                    ))
+                    self.layerIndex += 1
         self.conv = nn.Sequential(OrderedDict(convList))
         self.fc = nn.Sequential(OrderedDict(fcList))
 
     def forward(self,inputData):
         #定义前向过程
         convRes = self.conv(inputData)
-        convOnedim = convRes.view(-1,)
+        convOnedim = convRes.view(-1,self.dataSize*self.dataSize*self.featureMapAfterConv)
         res = self.fc(convOnedim)
         return res
 

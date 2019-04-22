@@ -46,7 +46,7 @@ class Genetic(object):
             #net:net由多个代表layer的list组成,layer数不等于hidenlayernums,因为do层写进了conv或fc里面
             hiidenLayerNums = int(popSize/10) + 1
             # hiidenLayerNums = 5
-            print('隐含层数量:',hiidenLayerNums)
+            # print('隐含层数量:',hiidenLayerNums)
             chromosome.append(hiidenLayerNums)
             #=====================================================|
             #                                                     |
