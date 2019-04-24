@@ -7,7 +7,7 @@ import torch
 import torchvision.transforms as transforms
 import torchvision as tv
 
-def dataLoader(transform,dataType='MNIST',batchSize=16):
+def dataLoader(transform,dataType='MNIST',trainBatchSize=16,testBatchSize=16):
     '''
     argvs:
         transform:数据转换格式
@@ -22,6 +22,6 @@ def dataLoader(transform,dataType='MNIST',batchSize=16):
     dataSetType = dataSetDict[dataType]
     trainData = dataSetType(root='./data/',train=True,transform=transform,download=True)
     testData = dataSetType(root='./data/',train=False,transform=transform,download=True)
-    trainloader = torch.utils.data.DataLoader(dataset=trainData,batch_size=batchSize,shuffle=True)
-    testloader = torch.utils.data.DataLoader(dataset=testData,batch_size=batchSize,shuffle=False)
+    trainloader = torch.utils.data.DataLoader(dataset=trainData,batch_size=trainBatchSize,shuffle=True)
+    testloader = torch.utils.data.DataLoader(dataset=testData,batch_size=testBatchSize,shuffle=False)
     return trainloader,testloader
