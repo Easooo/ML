@@ -39,7 +39,7 @@ class Genetic(object):
 
         '''
         self.populationSize = populationSize
-        popMember = []
+        popTotal = []
         for popSize in range(self.populationSize):
             chromosome = []
             net = []   
@@ -48,11 +48,12 @@ class Genetic(object):
             # hiidenLayerNums = 5
             # print('隐含层数量:',hiidenLayerNums)
             chromosome.append(hiidenLayerNums)
-            #=====================================================|
-            #                                                     |
-            # chromosome: [hiddenLayernums,net,lr,(acc,paraNums)] |
-            #                                                     |
-            #=====================================================|
+            #=============================================================|
+            #                                                             |
+            # chromosome: [hiddenLayernums,net,lr,[acc,paraNums],fitness] |
+            # 隐含层第一层必定是卷积层,fitness待初始化为0                    |
+            #                                                             |
+            #=============================================================|
             cnnFlag = True
             i = 0
             while (i < hiidenLayerNums):
@@ -82,10 +83,12 @@ class Genetic(object):
             chromosome.append(net)
             lr = np.random.rand()/100   #随机初始化学习率
             chromosome.append(lr)
-            acc,netParaNums= 0,0    #准确率和网络参数数量
+            acc,netParaNums = 0,0    #准确率和网络参数数量
+            fitness = 0  #初始化适应度
             chromosome.append([acc,netParaNums])
-            popMember.append(chromosome)
-        return popMember       
+            chromosome.append(fitness)
+            popTotal.append(chromosome)
+        return popTotal       
 
 
     def createLayers(self,cnnFlag,dropoutAllow):
@@ -138,14 +141,37 @@ class Genetic(object):
                 return (dropFlag,maxpoolflag,layer)
 
  
-    def mutate(self):
-        pass
+    def mutate(self,mutateRate,chromosome):
+        '''
+        变异操作
+        '''
 
-    def selcet(self):
-        pass
+    def selcet(self,population,tournaSize):
+        '''
+        通过锦标赛规则选择父代
+        argvs:
+            population:种群
+            tournaSize:参与锦标赛的数量
+        return:
+            最好的染色体(个体)
+        '''
+        populationSize = len(population)
+        idx = np.random.choice(np.arange(populationSize),size=tournaSize,replace=False)
+        populationNp = np.array(population)
+        tournaPop = list(populationNp[idx])   #选择出来的一组锦标赛竞争者
+        tournaPopSort = sorted(tournaPop,key=lambda popmember:popmember[4]) #fitness在第4
+        return list(tournaPopSort[0])  #返回fitness最小的一个popmember
 
-    def getFitness(self):
-        pass
+
+    def getFitness(self,popMember):
+        '''
+        计算适应度,适应度的值越小越好
+        '''
+        AF = 1
+        acc,netParaNums = popMember[3][0],popMember[3][1]
+        fitness = (1 - acc) + AF*(1 - 1/netParaNums)
+        popMember[4] = fitness
+        return fitness
 
 def getChoiceBool(choiceRate=0.5):
     '''
@@ -195,7 +221,6 @@ def createFc(fcUnits,actTypeForFc):
     actType = np.random.choice(actTypeForFc)
     layer[-1] = actType
     return layer
-
 
 if __name__ == '__main__':
     test = Genetic()

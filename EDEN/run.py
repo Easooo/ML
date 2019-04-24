@@ -17,11 +17,11 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
     lossFunc = nn.NLLLoss() if netList[-1][-1] == 'softmax' else nn.CrossEntropyLoss()
     lossFunc.cuda()  
     transformMnist = tv.transforms.ToTensor()
-    trainLoader,testloader =  dataLoader(transformMnist,dataType='MNIST',batchSize=64)
+    trainLoader,testloader =  dataLoader(transformMnist,dataType='MNIST',trainBatchSize=64,testBatchSize=64)
     autoNet = makeNet(popMember,inputSize,inputChannel)
     # device = torch.device("cpu")
     optimizer = optim.Adam(autoNet.parameters(),lr=popMember[2])   #ADAM优化器
-    autoNet.cuda()
+    # autoNet.cuda()
 
     for ep in range(epoch):
         sum_loss = 0
@@ -29,7 +29,7 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
         for i,train_data in enumerate(trainLoader):
             input_data,labels = train_data  #train_data 是一个元组
             # input_data,labels = input_data.to(device),labels.to(device)
-            input_data,labels = input_data.cuda(),labels.cuda()
+            # input_data,labels = input_data.cuda(),labels.cuda()
             optimizer.zero_grad()
             output = autoNet(input_data)
             loss = lossFunc(output,labels)
@@ -49,7 +49,7 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
             for test_data in testloader:
                 input_test,labels_test = test_data
                 # input_test,labels_test = input_test.to(device),labels_test.to(device)
-                input_test,labels_test = input_test.cuda(),labels_test.cuda()
+                # input_test,labels_test = input_test.cuda(),labels_test.cuda()
                 output_test = autoNet(input_test)
                 _, predicted = torch.max(output_test, 1)  #输出得分最高的类
                 total += labels_test.size(0) #统计50个batch 图片的总个数
@@ -60,8 +60,9 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch):
     saveDir = './model/' + str(popIndex)
     os.mkdir(saveDir)
     totalPara = sum(p.numel() for p in autoNet.parameters())
-    popMember[-1][0],popMember[-1][1] = acc,totalPara
-    torch.save(autoNet.state_dict(), saveDir+'/'+'ckp-'+str(epoch)+'-'+str(acc)+'-'+str(totalPara)+'-'+'.pth')
+    popMember[3][0],popMember[3][1] = acc,totalPara
+    saveName = 'ckp-'+str(epoch)+'-'+str(acc)+'-'+str(totalPara)+'-'+'.pth'
+    torch.save(autoNet.state_dict(), saveDir+'/'+saveName)
 
 
 def makeNet(popMember,inputSize,inputChannel):
@@ -71,26 +72,39 @@ def makeNet(popMember,inputSize,inputChannel):
     net = AutoNet(popMember,inputSize,inputChannel)
     return net
 
+def savePopCsv(savePath):
+    '''
+    将种群信息保存到csv文件
+    '''
+    pass
+
+
+
 if __name__ == "__main__":
+
     test = Genetic()
     testPop = test.createPopulation(100)
 
-    nHiden = [i[0] for i in testPop]
-    netList = [i[1] for i in testPop]
-    lrList = [i[2] for i in testPop]
-    accParaList = [i[3] for i in testPop]
+    # nHiden = [i[0] for i in testPop]
+    # netList = [i[1] for i in testPop]
+    # lrList = [i[2] for i in testPop]
+    # accParaList = [i[3] for i in testPop]
+    # fitnessList = []
 
-    saveDict = {'layernums':nHiden,
-                'net':netList,
-                'lr':lrList,
-                'acc&ParaList':accParaList
-    }
-    df = pd.DataFrame(saveDict)
-    df.to_csv('./pop.csv')
+    # saveDict = {'layernums':nHiden,
+    #             'net':netList,
+    #             'lr':lrList,
+    #             'acc&ParaList':accParaList
+    # }
 
-    for index,popMember in enumerate(testPop):
-        trainStep(popMember,index,28,1,4)  
+    # for index,popMember in enumerate(testPop):
+    #     trainStep(popMember,index,28,1,4)
+    #     fitness = test.getFitness(popMember)
+    #     fitnessList.append(fitness)
+    # saveDict['fitness'] =  fitnessList
 
+    # df = pd.DataFrame(saveDict)
+    # df.to_csv('./logs/poptest.csv')
 
 
 
