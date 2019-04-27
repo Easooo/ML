@@ -13,6 +13,7 @@ class Genetic(object):
     '''
     def __init__(self):
         self.populationSize = None
+        self.maxlayerNums = -1
         self.layerType = ['conv','fc','dropout']
         self.actTypeForConv = ['linear','leaky relu','prelu','relu']
         self.actTypeForFc = ['linear','sigmoid','softmax','relu']  #注如果是最后一层FC的话是没有relu的
@@ -44,10 +45,11 @@ class Genetic(object):
             chromosome = []
             net = []   
             #net:net由多个代表layer的list组成,layer数不等于hidenlayernums,因为do层写进了conv或fc里面
-            hiidenLayerNums = int(popSize/10) + 1
+            self.maxlayerNums = int(popSize/10) + 1
+            # hiidenLayerNums = int(popSize/10) + 1
             # hiidenLayerNums = 5
-            # print('隐含层数量:',hiidenLayerNums)
-            chromosome.append(hiidenLayerNums)
+            # print('隐含层数量:',self.maxlayerNums)
+            chromosome.append( self.maxlayerNums)
             #=============================================================|
             #                                                             |
             # chromosome: [hiddenLayernums,net,lr,[acc,paraNums],fitness] |
@@ -56,12 +58,12 @@ class Genetic(object):
             #=============================================================|
             cnnFlag = True
             i = 0
-            while (i < hiidenLayerNums):
+            while (i < self.maxlayerNums):
                 if i == 0:
                     dropoutAllow = False
                 else:
                     dropoutAllow = True
-                dropFlag,maxpoolflag,newLayer = self.createLayers(cnnFlag,dropoutAllow)
+                dropFlag,maxpoolflag,newLayer = self.createLayers(cnnFlag,dropoutAllow,i)
                 if dropFlag:  #如果有dropout操作
                     prelayer = net[-1]  #当前net的最后一层,添加do操作
                     if prelayer[1] is None:
@@ -91,40 +93,53 @@ class Genetic(object):
         return popTotal       
 
 
-    def createLayers(self,cnnFlag,dropoutAllow):
+    def createLayers(self,cnnFlag,dropoutAllow,currentLayerNum):
         '''
         创建网络层
         argvs:
             cnnFlag:设置下一层网络是否可以是cnn
             dropoutAllow:设置是否可以使用dropout
+            currentLayerNum:当前已创建的层,设置这个层是为了限制 当前层的数量和最大层数相差为1的时候，
+            卷积层和池化层同时创建
         return:
             一个关于网络结构的元组(dropflag,list),dropflag = 1表示是dropout
         '''
         dropFlag = 0
         maxpoolflag = 0
+        currentlayerNumTmp = currentLayerNum
         if cnnFlag:
             if dropoutAllow:
                 layerTypeTmp = np.random.choice(self.layerType)
                 if layerTypeTmp == 'conv':
+                    if currentlayerNumTmp < self.maxlayerNums:
+                        layer = createConv(self.convFilterNum,self.kernelSize,self.actTypeForConv)
+                        currentlayerNumTmp +=1
+                    if currentlayerNumTmp < self.maxlayerNums:
+                        poolkSize = createMaxpool(self.kernelSize)   #创建池化层                        
+                        if poolkSize is not None:
+                            layer[2] = poolkSize           #将池化层参数插入layer中
+                            currentlayerNumTmp +=1
+                            maxpoolflag = 1
+                    return (dropFlag,maxpoolflag,layer)
+                if layerTypeTmp == 'fc':
+                    if currentlayerNumTmp < self.maxlayerNums:
+                        layer = createFc(self.fcUnits,self.actTypeForFc)
+                        return (dropFlag,maxpoolflag,layer)
+                if layerTypeTmp == 'dropout':
+                    if currentlayerNumTmp < self.maxlayerNums:
+                        dropFlag = 1
+                        prob = np.random.choice(self.keepProb)
+                        return (dropFlag,maxpoolflag,prob)                   
+            else:
+                if currentlayerNumTmp < self.maxlayerNums:
                     layer = createConv(self.convFilterNum,self.kernelSize,self.actTypeForConv)
+                    currentlayerNumTmp += 1
+                if currentlayerNumTmp < self.maxlayerNums:
                     poolkSize = createMaxpool(self.kernelSize)   #创建池化层
                     if poolkSize is not None:
                         layer[2] = poolkSize           #将池化层参数插入layer中
-                        maxpoolflag = 1
-                    return (dropFlag,maxpoolflag,layer)
-                if layerTypeTmp == 'fc':
-                    layer = createFc(self.fcUnits,self.actTypeForFc)
-                    return (dropFlag,maxpoolflag,layer)
-                if layerTypeTmp == 'dropout':
-                    dropFlag = 1
-                    prob = np.random.choice(self.keepProb)
-                    return (dropFlag,maxpoolflag,prob)                   
-            else:
-                layer = createConv(self.convFilterNum,self.kernelSize,self.actTypeForConv)
-                poolkSize = createMaxpool(self.kernelSize)   #创建池化层
-                if poolkSize is not None:
-                    layer[2] = poolkSize           #将池化层参数插入layer中
-                    maxpoolflag = 1               
+                        currentlayerNumTmp += 1
+                        maxpoolflag = 1               
                 return (dropFlag,maxpoolflag,layer) 
         else:   #这里不能用cnn 因为是fc
             if dropoutAllow:
@@ -141,10 +156,22 @@ class Genetic(object):
                 return (dropFlag,maxpoolflag,layer)
 
  
-    def mutate(self,mutateRate,chromosome):
+    def mutate(self,popMember,maxLayer):
         '''
         变异操作
+        popmember:待变异的个体
+        maxlayer:最大的层数量
         '''
+        if getChoiceBool(1): #学习率
+            newLr = np.random.rand()/100
+            popMember[2] = newLr + 5000000
+            return 
+        else:  #网络层
+            operationType = ['add','rep','del'] #分别代表增加\删除\替换
+            if popMember[0] == 1:   #只有一层,只能执行增加和替换功能
+                operationType = ['add','rep']
+                operation = np.random.choice(operationType)
+                if operation == 'rep':#只能用卷积层替换卷积层(第一层为卷积层)
 
     def selcet(self,population,tournaSize):
         '''
@@ -153,14 +180,16 @@ class Genetic(object):
             population:种群
             tournaSize:参与锦标赛的数量
         return:
-            最好的染色体(个体)
+            最好的染色体(个体)和index
         '''
         populationSize = len(population)
         idx = np.random.choice(np.arange(populationSize),size=tournaSize,replace=False)
         populationNp = np.array(population)
         tournaPop = list(populationNp[idx])   #选择出来的一组锦标赛竞争者
-        tournaPopSort = sorted(tournaPop,key=lambda popmember:popmember[4]) #fitness在第4
-        return list(tournaPopSort[0])  #返回fitness最小的一个popmember
+        tournaPopidx = list(zip(tournaPop,idx))
+        tournaPopSort = sorted(tournaPopidx,key=lambda popmember:popmember[0][2]) #fitness在第4
+        #返回fitness最小的一个popmember和在原来的种群中的index
+        return list(tournaPopSort[0][0]),int(tournaPopSort[0][1])  
 
 
     def getFitness(self,popMember):
@@ -221,6 +250,136 @@ def createFc(fcUnits,actTypeForFc):
     actType = np.random.choice(actTypeForFc)
     layer[-1] = actType
     return layer
+
+def departLayers(netLayer):
+    '''
+    将population中的组合net分离成单个的列表形式
+    e.g.:
+        [[0, [0.5,0.3], 4, 49, 3, 'linear'], 
+        [0, None, None, 18, 2, 'relu'], 
+        [1, [0.8], 78, 'linear'], 
+        [2, 10, 'softmax']]    最后一层不算,hiddenlayernums = 7
+    ==>
+        [['conv',out=49,kersize=3,'linear'],
+         ['pool',kersize=4],
+         ['drop',0.5],
+         ['drop',0.3],
+         ['conv',out=18,kersize=2,'relu'],
+         ['fc',out=78,'linear'],
+         ['drop',0.8]
+         ['lastfc',10,'softmax']
+        ]             
+    '''
+    departLayersList = []
+    for everynet in netLayer:
+        conv = ['conv']
+        pool = ['pool']
+        fc = ['fc']
+        if everynet[0] == 0: #卷积层
+            conv = conv + everynet[3:]
+            departLayersList.append(conv)
+            if everynet[2] is not None: #池化层
+                pool.append(everynet[2])
+                departLayersList.append(pool)
+            if everynet[1] is not None:   #dropout层
+                for kp in everynet[1]:
+                    drop = ['drop'] + [kp]
+                    departLayersList.append(drop)
+        elif everynet[0] == 1: #全连接层
+            fc = fc + everynet[2:]
+            departLayersList.append(fc)
+            if everynet[1] is not None: #dropout层
+                for kp in everynet[1]:
+                    drop = ['drop'] + [kp]
+                    departLayersList.append(drop)
+        else:
+            lastfc = ['lastfc'] + everynet[1:]
+            departLayersList.append(lastfc)
+            return departLayersList    #已经到了最后一层fc
+
+def mergeLayers(departLayersList):
+    '''
+    将单个的列表形式合并成population中的组合net
+    e.g.:
+        [['conv',out=49,kersize=3,'linear'],
+         ['pool',kersize=4],
+         ['drop',0.5],
+         ['drop',0.3],
+         ['conv',out=18,kersize=2,'relu'],
+         ['fc',out=78,'linear'],
+         ['drop',0.8]
+         ['lastfc',10,'softmax']
+        ]             #自动忽略最后一层全连接层
+    ==>
+        [[0, [0.5,0.3], 4, 49, 3, 'linear'], 
+        [0, None, None, 18, 2, 'relu'], 
+        [1, [0.8], 78, 'linear'], 
+        [2, 10, 'softmax']]    最后一层不算,hiddenlayernums = 7 
+
+    '''
+    mergeLayersList = []
+    LayerTmp = None
+    convtotal = []
+    fctotal = []
+    fcflag = False
+    for layers in departLayersList:
+        if layers[0] == 'conv':  #卷积
+            if LayerTmp is not None:
+                mergeLayersList.append(LayerTmp)
+                LayerTmp = None
+                convtotal = []
+            convtotal = [0,None,None] + layers[1:]
+            LayerTmp = convtotal
+        elif layers[0] == 'pool': #池化层
+            convtotal[2] = layers[1]
+            LayerTmp = convtotal
+        elif layers[0] == 'drop' and (not fcflag):  #dropout层
+            if convtotal[1] is None:
+                convtotal[1] = [layers[1]]
+                LayerTmp = convtotal
+            else:
+                convtotal[1].append(layers[1])
+                LayerTmp = convtotal
+        elif layers[0] == 'fc':   #全连接层
+            fcflag = True
+            if LayerTmp is not None:
+                mergeLayersList.append(LayerTmp)
+                LayerTmp = None
+                fctotal = []
+            fctotal = [1,None] + layers[1:]
+            LayerTmp = fctotal
+        elif layers[0] == 'drop' and (fcflag):
+            if fctotal[1] is None:
+                fctotal[1] = [layers[1]]
+                LayerTmp = fctotal
+            else:
+                fctotal[1].append(layers[1])
+                LayerTmp = fctotal
+        elif layers[0] == 'lastfc':
+            mergeLayersList.append(LayerTmp)
+            LayerTmp = None
+            LayerTmp = [2] + layers[1:]
+            mergeLayersList.append(LayerTmp)
+    return mergeLayersList
+
+def mutateReplaceLayer(netLayer,layerIdx,layerType):
+    '''
+    替换操作,需要检查替换后的网络合理性
+    argvs:
+        netLayer:popmember[1]
+        layerIdx:需要操作的index
+        layerType:将要替换的层的类型
+    '''
+    assert layerType in ['conv','pool','drop','fc']
+    netDepart = departLayers(netLayer)
+    
+
+def mutateAddLayer():
+    pass
+
+def mutateDelLayer():
+    pass
+
 
 if __name__ == '__main__':
     test = Genetic()
