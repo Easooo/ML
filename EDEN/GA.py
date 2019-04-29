@@ -170,17 +170,52 @@ class Genetic(object):
         popmember:待变异的个体
         maxlayer:最大的隐含层数量,默认为10
         '''
-        if getChoiceBool(1): #学习率
+        if getChoiceBool(0.5): #学习率
             newLr = np.random.rand()/100
-            popMember[2] = newLr + 5000000
+            popMember[2] = newLr
             return 
-        else:  #网络层
-            operationType = ['add','rep','del'] #分别代表增加\删除\替换
+        else:  #网络层结构的变异        
+            opFuncDict = {'add':mutateAddLayer,'rep':mutateReplaceLayer,'del':mutateDelLayer} 
+            #分别代表增加\删除\替换
             if popMember[0] == 1:   #只有一层,只能执行增加和替换功能
-                operationType = ['add','rep']
-                operation = np.random.choice(operationType)
-                if operation == 'rep':#只能用卷积层替换卷积层(第一层为卷积层)
-                    pass
+                operationType = ['add','rep']  #不能删除
+                while True:                     #直到正确为止
+                    layeridx = popMember[0]
+                    operation = np.random.choice(operationType)
+                    opFunc = opFuncDict[operation]
+                    layerType = np.random.choice(['conv','pool','drop','fc'])
+                    cf,newLayer = opFunc(popMember[1],layeridx,layerType)
+                    if cf:
+                        break
+                popMember[1] = newLayer
+
+            elif 1 < popMember[0] and popMember[0] < maxLayer:  #大于一层小于最大层
+                operationType = ['add','rep','del']  #不能删除
+                while True:                     #直到正确为止
+                    operation = np.random.choice(operationType)
+                    if operation == 'add':
+                        layeridx = np.random.choice(range(popMember[0]+1)) 
+                        #可以加在倒数最后一层,因为insert方法会使得list后移
+                    else:
+                        layeridx = np.random.choice(range(popMember[0]))
+                    opFunc = opFuncDict[operation]
+                    layerType = np.random.choice(['conv','pool','drop','fc'])
+                    cf,newLayer = opFunc(popMember[1],layeridx,layerType)
+                    if cf:
+                        break
+                popMember[1] = newLayer
+
+            else:   #等于最大层数
+                operationType = ['rep','del']  #不能增加
+                while True:                     #直到正确为止
+                    operation = np.random.choice(operationType)
+                    layeridx = np.random.choice(range(popMember[0]))
+                    opFunc = opFuncDict[operation]
+                    layerType = np.random.choice(['conv','pool','drop','fc'])
+                    cf,newLayer = opFunc(popMember[1],layeridx,layerType)
+                    if cf:
+                        break
+                popMember[1] = newLayer   
 
     def selcet(self,population,tournaSize):
         '''
@@ -514,7 +549,7 @@ def mutateDelLayer(netList,layerIdx,layerType):
     argvs:
         netList:popmember[1]
         layerIdx:需要操作的index
-        layerType:将要替换的层的类型
+        layerType:并没有什么用，但保持一致，代码比较好写
     '''
     assert layerType in ['conv','pool','drop','fc']
     netDepartTmp = departLayers(netList)
