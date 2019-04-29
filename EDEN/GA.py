@@ -49,13 +49,19 @@ class Genetic(object):
             # hiidenLayerNums = int(popSize/10) + 1
             # hiidenLayerNums = 5
             # print('隐含层数量:',self.maxlayerNums)
-            chromosome.append( self.maxlayerNums)
-            #=============================================================|
-            #                                                             |
-            # chromosome: [hiddenLayernums,net,lr,[acc,paraNums],fitness] |
-            # 隐含层第一层必定是卷积层,fitness待初始化为0                    |
-            #                                                             |
-            #=============================================================|
+            chromosome.append(self.maxlayerNums)
+    #=================================================================================|
+    #                                                                                 |
+    # chromosome: [hiddenLayernums,net,lr,[acc,paraNums],fitness,mutateFlag,popindex] |
+    # 隐含层第一层必定是卷积层,fitness待初始化为0                                        |
+    # chromosome[0]:隐含层数
+    # chromosome[1]:网络结构
+    # chromosome[2]:学习率
+    # chromosome[3]:[0]:正确率 [1]:超参数数量
+    # chromosome[4]:适应度
+    # chromosome[5]:是否变异
+    # chromosome[6]:索引,以便于演化到最后的时候容易超出是哪一个并且和模型对应
+    #=================================================================================
             cnnFlag = True
             i = 0
             while (i < self.maxlayerNums):
@@ -89,6 +95,8 @@ class Genetic(object):
             fitness = 0  #初始化适应度
             chromosome.append([acc,netParaNums])
             chromosome.append(fitness)
+            chromosome.append(False)
+            chromosome.append(popSize)
             popTotal.append(chromosome)
         return popTotal       
 
@@ -156,11 +164,11 @@ class Genetic(object):
                 return (dropFlag,maxpoolflag,layer)
 
  
-    def mutate(self,popMember,maxLayer):
+    def mutate(self,popMember,maxLayer=10):
         '''
         变异操作
         popmember:待变异的个体
-        maxlayer:最大的层数量
+        maxlayer:最大的隐含层数量,默认为10
         '''
         if getChoiceBool(1): #学习率
             newLr = np.random.rand()/100
@@ -172,6 +180,7 @@ class Genetic(object):
                 operationType = ['add','rep']
                 operation = np.random.choice(operationType)
                 if operation == 'rep':#只能用卷积层替换卷积层(第一层为卷积层)
+                    pass
 
     def selcet(self,population,tournaSize):
         '''
@@ -199,7 +208,7 @@ class Genetic(object):
         AF = 1
         acc,netParaNums = popMember[3][0],popMember[3][1]
         fitness = (1 - acc) + AF*(1 - 1/netParaNums)
-        popMember[4] = fitness
+        popMember[4] = fitness   #修改fitness
         return fitness
 
 def getChoiceBool(choiceRate=0.5):
@@ -362,24 +371,201 @@ def mergeLayers(departLayersList):
             mergeLayersList.append(LayerTmp)
     return mergeLayersList
 
-def mutateReplaceLayer(netLayer,layerIdx,layerType):
+def mutateReplaceLayer(netList,layerIdx,layerType):
     '''
     替换操作,需要检查替换后的网络合理性
     argvs:
-        netLayer:popmember[1]
+        netList:popmember[1]
         layerIdx:需要操作的index
         layerType:将要替换的层的类型
     '''
     assert layerType in ['conv','pool','drop','fc']
-    netDepart = departLayers(netLayer)
-    
+    netDepartTmp = departLayers(netList)
+    # netDepart = netDepartTmp[:-1] #去除最后一层fc
+    CFLAG = False
+    newNetList = None
+    if layerType == 'conv':
+        if layerIdx != 0:   #layeridx = 0的时候可以继续换conv
+            for i in netDepartTmp[:layerIdx]:    
+                if i[0] == 'fc':     #卷积不能在fc后面
+                    return CFLAG,newNetList
+        FilterNum = np.random.choice(np.arange(10,101))  
+        conkSize = np.random.choice(np.arange(1,7))
+        actType = np.random.choice(['linear','leaky relu','prelu','relu'])
+        newLayer = ['conv',FilterNum,conkSize,actType]
+        netDepartTmp[layerIdx] = newLayer
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
-def mutateAddLayer():
-    pass
+    elif layerType == 'pool':  #池化层
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        for i in netDepartTmp[:layerIdx]:
+            if i[0] == 'fc':    #池化不能在fc后面
+                return CFLAG,newNetList
+        poolkSize = np.random.choice(np.arange(1,7))
+        newLayer = ['pool',poolkSize]
+        netDepartTmp[layerIdx] = newLayer  #替换
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
-def mutateDelLayer():
-    pass
+    elif layerType == 'drop':
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        prob = np.random.choice(np.arange(0.3,1.05,0.05))
+        newLayer = ['drop',prob]
+        netDepartTmp[layerIdx] = newLayer  #替换
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
+    elif layerType == 'fc':
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        for i in netDepartTmp[layerIdx+1:-1]:    #fc后面不能有conv或者pool,且不考虑当前idx(将被替换)
+            if (i[0] == 'pool') or (i[0] == 'conv'):
+                return CFLAG,newNetList
+        fcUnits = np.random.choice(np.arange(10,101))
+        actType = np.random.choice(['linear','sigmoid','softmax','relu'])
+        newLayer = ['fc',fcUnits,actType]
+        netDepartTmp[layerIdx] = newLayer
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+def mutateAddLayer(netList,layerIdx,layerType):
+    '''
+    增加操作,需要检查增加后的网络合理性
+    注意. 增加层操作，layeridx可以是在最后一层输出层的位置,如hiddenlayernum=5(0,1,2,3,4) 
+    lyeridx可以为5 即最后一层输出层 后移 一位
+    argvs:
+        netList:popmember[1]
+        layerIdx:需要操作的index
+        layerType:将要替换的层的类型
+    '''
+    assert layerType in ['conv','pool','drop','fc']
+    netDepartTmp = departLayers(netList)
+    # netDepart = netDepartTmp[:-1] #去除最后一层fc
+    CFLAG = False
+    newNetList = None
+    if layerType == 'conv':
+        for i in netDepartTmp[:layerIdx]:    
+            if i[0] == 'fc':     #卷积不能在fc后面
+                return CFLAG,newNetList
+        FilterNum = np.random.choice(np.arange(10,101))  
+        conkSize = np.random.choice(np.arange(1,7))
+        actType = np.random.choice(['linear','leaky relu','prelu','relu'])
+        newLayer = ['conv',FilterNum,conkSize,actType]
+        netDepartTmp.insert(layerIdx,newLayer)    #insert插入,len+1(后移)
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+    elif layerType == 'pool':  #池化层
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        for i in netDepartTmp[:layerIdx]:
+            if i[0] == 'fc':    #池化不能在fc后面
+                return CFLAG,newNetList
+        poolkSize = np.random.choice(np.arange(1,7))
+        newLayer = ['pool',poolkSize]
+        netDepartTmp.insert(layerIdx,newLayer)
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+    elif layerType == 'drop':
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        prob = np.random.choice(np.arange(0.3,1.05,0.05))
+        newLayer = ['drop',prob]
+        netDepartTmp.insert(layerIdx,newLayer)
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+    elif layerType == 'fc':
+        if layerIdx == 0:   #第0层直接pass
+            return CFLAG,newNetList
+        for i in netDepartTmp[layerIdx:-1]:    #fc后面不能有conv或者pool,且要考虑当前idx
+            if (i[0] == 'pool') or (i[0] == 'conv'):
+                return CFLAG,newNetList
+        fcUnits = np.random.choice(np.arange(10,101))
+        actType = np.random.choice(['linear','sigmoid','softmax','relu'])
+        newLayer = ['fc',fcUnits,actType]
+        netDepartTmp.insert(layerIdx,newLayer)
+        CFLAG = judgeConv(netDepartTmp)   #判断
+        if CFLAG:
+            newNetList = mergeLayers(netDepartTmp)
+            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+def mutateDelLayer(netList,layerIdx,layerType):
+    '''
+    删除操作,需要检查删除后的网络合理性
+    argvs:
+        netList:popmember[1]
+        layerIdx:需要操作的index
+        layerType:将要替换的层的类型
+    '''
+    assert layerType in ['conv','pool','drop','fc']
+    netDepartTmp = departLayers(netList)
+    # netDepart = netDepartTmp[:-1] #去除最后一层fc
+    CFLAG = False
+    newNetList = None
+    netDepartTmp.pop(layerIdx)
+    CFLAG = judgeConv(netDepartTmp)   #判断
+    if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+
+
+def judgeConv(departLayers):
+    '''
+    判断departLayer中每个卷积大层是否是合理的
+    主要用于变异时，网络层数合理性的判断
+    return:
+        True or False
+    '''
+    allConv = []
+    convBig = [] #卷积大层包括:卷积层\池化层\dropout
+    for layer in departLayers:
+        if layer[0] == 'conv':
+            if len(convBig) == 0:
+                convBig.append(layer[0])
+            else:
+                allConv.append(convBig)  #将之前的bigconv加入大列表中
+                convBig = []
+                convBig.append(layer[0])
+        elif (layer[0] == 'fc') or (layer[0] == 'lastfc'):
+            allConv.append(convBig)
+            break   #fc或者lastfc后面的不管
+        else: #加进pool和drop
+            convBig.append(layer[0])
+    print(allConv)
+
+    for everyConv in allConv:
+        poolnum = 0
+        if 'conv' not in everyConv: #没有卷积
+            return False
+        for l in everyConv:
+            if l == 'pool':
+                poolnum += 1
+            if poolnum > 1 :  #池化层数大于一
+                return False
+        if (poolnum == 1) and ('drop' in everyConv):  #pool和drop同时存在
+            poolIdx = everyConv.index('pool')
+            if 'drop' in everyConv[:poolIdx]:  #drop在pool前面
+                return False             
+    return True    #没问题就返回True
 
 if __name__ == '__main__':
     test = Genetic()
