@@ -170,7 +170,7 @@ class Genetic(object):
         popmember:待变异的个体
         maxlayer:最大的隐含层数量,默认为10
         '''
-        if getChoiceBool(0.5): #学习率
+        if getChoiceBool(0.1): #学习率
             newLr = np.random.rand()/100
             popMember[2] = newLr
             return 
@@ -180,14 +180,23 @@ class Genetic(object):
             if popMember[0] == 1:   #只有一层,只能执行增加和替换功能
                 operationType = ['add','rep']  #不能删除
                 while True:                     #直到正确为止
-                    layeridx = popMember[0]
                     operation = np.random.choice(operationType)
+                    if operation == 'add':
+                        layeridx = np.random.choice(range(popMember[0] + 1))#0、1随便选一个
+                    else:
+                        layeridx = popMember[0] - 1   #为0
                     opFunc = opFuncDict[operation]
                     layerType = np.random.choice(['conv','pool','drop','fc'])
                     cf,newLayer = opFunc(popMember[1],layeridx,layerType)
                     if cf:
                         break
-                popMember[1] = newLayer
+                if operation == 'add':
+                    popMember[0] += 1
+                    popMember[1] = newLayer
+                    popMember[5] = True  
+                else:
+                    popMember[1] = newLayer
+                    popMember[5] = True
 
             elif 1 < popMember[0] and popMember[0] < maxLayer:  #大于一层小于最大层
                 operationType = ['add','rep','del']  #不能删除
@@ -203,7 +212,19 @@ class Genetic(object):
                     cf,newLayer = opFunc(popMember[1],layeridx,layerType)
                     if cf:
                         break
-                popMember[1] = newLayer
+                if operation == 'add':
+                    popMember[0] += 1
+                    popMember[1] = newLayer
+                    popMember[5] = True
+
+                elif operation == 'del':
+                    popMember[0] -= 1
+                    popMember[1] = newLayer
+                    popMember[5] = True
+                else:
+                    popMember[1] = newLayer
+                    popMember[5] = True                   
+
 
             else:   #等于最大层数
                 operationType = ['rep','del']  #不能增加
@@ -215,9 +236,15 @@ class Genetic(object):
                     cf,newLayer = opFunc(popMember[1],layeridx,layerType)
                     if cf:
                         break
-                popMember[1] = newLayer   
+                if operation == 'del':
+                    popMember[0] -= 1
+                    popMember[1] = newLayer
+                    popMember[5] = True
+                else:
+                    popMember[1] = newLayer
+                    popMember[5] = True   
 
-    def selcet(self,population,tournaSize):
+    def selcet(self,population,tournaSize=7):
         '''
         通过锦标赛规则选择父代
         argvs:
