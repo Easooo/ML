@@ -37,9 +37,9 @@ class AutoNet(nn.Module):
         convList = []
         fcList = []
         actFunc = {'linear':None,    #linear即激活函数为空，保持原有的线性结构
-                    'leaky relu':nn.LeakyReLU(),
+                    'leaky relu':nn.LeakyReLU(inplace=True),
                     'prelu':nn.PReLU(),
-                    'relu':nn.ReLU(),
+                    'relu':nn.ReLU(inplace=True),
                     'sigmoid':nn.Sigmoid(),
                     'softmax':nn.LogSoftmax(dim=1)
         }
@@ -51,6 +51,10 @@ class AutoNet(nn.Module):
                 #k=1,p=0; k=2,p=1; k=3,p=1; k=4,p=2; k=5,p=2; k=6,p=3
                 convList.append(('net '+str(self.layerIndex),
                                 nn.Conv2d(self.featureMap,out_channels=int(layer[3]),kernel_size=layer[4],padding=padTmp)
+                ))
+                self.layerIndex += 1
+                convList.append(('net'+str(self.layerIndex),
+                                nn.BatchNorm2d(int(layer[3]))
                 ))
                 self.layerIndex += 1
                 self.dataSize = caculateSize(self.dataSize,layer[4],padTmp,1)   #计算一次datasize    

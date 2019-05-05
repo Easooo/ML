@@ -95,8 +95,8 @@ class Genetic(object):
             fitness = 0  #初始化适应度
             chromosome.append([acc,netParaNums])
             chromosome.append(fitness)
-            chromosome.append(False)
-            chromosome.append(popSize)
+            chromosome.append('None')        #变异
+            chromosome.append(popSize)         #每个index
             popTotal.append(chromosome)
         return popTotal       
 
@@ -170,9 +170,10 @@ class Genetic(object):
         popmember:待变异的个体
         maxlayer:最大的隐含层数量,默认为10
         '''
-        if getChoiceBool(0.1): #学习率
+        if getChoiceBool(0.5): #学习率
             newLr = np.random.rand()/100
             popMember[2] = newLr
+            popMember[5] = 'lr'
             return 
         else:  #网络层结构的变异        
             opFuncDict = {'add':mutateAddLayer,'rep':mutateReplaceLayer,'del':mutateDelLayer} 
@@ -193,10 +194,10 @@ class Genetic(object):
                 if operation == 'add':
                     popMember[0] += 1
                     popMember[1] = newLayer
-                    popMember[5] = True  
+                    popMember[5] = 'add'  
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = True
+                    popMember[5] = 'rep'
 
             elif 1 < popMember[0] and popMember[0] < maxLayer:  #大于一层小于最大层
                 operationType = ['add','rep','del']  #不能删除
@@ -215,15 +216,15 @@ class Genetic(object):
                 if operation == 'add':
                     popMember[0] += 1
                     popMember[1] = newLayer
-                    popMember[5] = True
+                    popMember[5] = 'add'
 
                 elif operation == 'del':
                     popMember[0] -= 1
                     popMember[1] = newLayer
-                    popMember[5] = True
+                    popMember[5] = 'del'
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = True                   
+                    popMember[5] = 'rep'                   
 
 
             else:   #等于最大层数
@@ -239,10 +240,10 @@ class Genetic(object):
                 if operation == 'del':
                     popMember[0] -= 1
                     popMember[1] = newLayer
-                    popMember[5] = True
+                    popMember[5] = 'del'
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = True   
+                    popMember[5] = 'rep'   
 
     def selcet(self,population,tournaSize=7):
         '''
@@ -258,20 +259,20 @@ class Genetic(object):
         populationNp = np.array(population)
         tournaPop = list(populationNp[idx])   #选择出来的一组锦标赛竞争者
         tournaPopidx = list(zip(tournaPop,idx))
-        tournaPopSort = sorted(tournaPopidx,key=lambda popmember:popmember[0][2]) #fitness在第4
+        tournaPopSort = sorted(tournaPopidx,key=lambda popmember:popmember[0][4]) #fitness在第4
         #返回fitness最小的一个popmember和在原来的种群中的index
         return list(tournaPopSort[0][0]),int(tournaPopSort[0][1])  
 
 
-    def getFitness(self,popMember):
-        '''
-        计算适应度,适应度的值越小越好
-        '''
-        AF = 1
-        acc,netParaNums = popMember[3][0],popMember[3][1]
-        fitness = (1 - acc) + AF*(1 - 1/netParaNums)
-        popMember[4] = fitness   #修改fitness
-        return fitness
+def getFitness(popMember):
+    '''
+    计算适应度,适应度的值越小越好
+    '''
+    AF = 1
+    acc,netParaNums = popMember[3][0],popMember[3][1]
+    fitness = (1 - acc) + AF*(1 - 1/netParaNums)
+    popMember[4] = fitness   #修改fitness
+    return fitness
 
 def getChoiceBool(choiceRate=0.5):
     '''
@@ -393,6 +394,8 @@ def mergeLayers(departLayersList):
     convtotal = []
     fctotal = []
     fcflag = False
+    if departLayersList[0][0] != 'conv':
+        return mergeLayersList
     for layers in departLayersList:
         if layers[0] == 'conv':  #卷积
             if LayerTmp is not None:
@@ -457,9 +460,9 @@ def mutateReplaceLayer(netList,layerIdx,layerType):
         newLayer = ['conv',FilterNum,conkSize,actType]
         netDepartTmp[layerIdx] = newLayer
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'pool':  #池化层
         if layerIdx == 0:   #第0层直接pass
@@ -471,9 +474,9 @@ def mutateReplaceLayer(netList,layerIdx,layerType):
         newLayer = ['pool',poolkSize]
         netDepartTmp[layerIdx] = newLayer  #替换
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'drop':
         if layerIdx == 0:   #第0层直接pass
@@ -482,9 +485,9 @@ def mutateReplaceLayer(netList,layerIdx,layerType):
         newLayer = ['drop',prob]
         netDepartTmp[layerIdx] = newLayer  #替换
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'fc':
         if layerIdx == 0:   #第0层直接pass
@@ -497,9 +500,9 @@ def mutateReplaceLayer(netList,layerIdx,layerType):
         newLayer = ['fc',fcUnits,actType]
         netDepartTmp[layerIdx] = newLayer
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
 def mutateAddLayer(netList,layerIdx,layerType):
     '''
@@ -526,9 +529,9 @@ def mutateAddLayer(netList,layerIdx,layerType):
         newLayer = ['conv',FilterNum,conkSize,actType]
         netDepartTmp.insert(layerIdx,newLayer)    #insert插入,len+1(后移)
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'pool':  #池化层
         if layerIdx == 0:   #第0层直接pass
@@ -540,9 +543,9 @@ def mutateAddLayer(netList,layerIdx,layerType):
         newLayer = ['pool',poolkSize]
         netDepartTmp.insert(layerIdx,newLayer)
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'drop':
         if layerIdx == 0:   #第0层直接pass
@@ -551,9 +554,9 @@ def mutateAddLayer(netList,layerIdx,layerType):
         newLayer = ['drop',prob]
         netDepartTmp.insert(layerIdx,newLayer)
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
     elif layerType == 'fc':
         if layerIdx == 0:   #第0层直接pass
@@ -566,9 +569,9 @@ def mutateAddLayer(netList,layerIdx,layerType):
         newLayer = ['fc',fcUnits,actType]
         netDepartTmp.insert(layerIdx,newLayer)
         CFLAG = judgeConv(netDepartTmp)   #判断
-        if CFLAG:
-            newNetList = mergeLayers(netDepartTmp)
-            return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+        # if CFLAG:
+        newNetList = mergeLayers(netDepartTmp)
+        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
 def mutateDelLayer(netList,layerIdx,layerType):
     '''
@@ -585,9 +588,9 @@ def mutateDelLayer(netList,layerIdx,layerType):
     newNetList = None
     netDepartTmp.pop(layerIdx)
     CFLAG = judgeConv(netDepartTmp)   #判断
-    if CFLAG:
-        newNetList = mergeLayers(netDepartTmp)
-        return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
+    # if CFLAG:
+    newNetList = mergeLayers(netDepartTmp)
+    return CFLAG,newNetList   #返回网络正确与否的flag,新的网络(格式与popmember一样)
 
 
 def judgeConv(departLayers):
