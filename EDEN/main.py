@@ -6,6 +6,8 @@ from networks import torch
 import train
 import os
 from dataSet import allTransformList
+import copy
+
 def createDir(popSize,rootDir='./model/'):
     '''
     创建每个个体的子目录
@@ -56,14 +58,14 @@ if __name__ == "__main__":
 
         print('===================gen:%d===================='%(gen))
         evaluate(population,inputSize,inputChannel,epoch,gen,tfList=tfList,dataType=dataType)
-        populationTmp = population.copy()
+        populationTmp = copy.deepcopy(population)
         populationTmp = sorted(populationTmp,key=lambda popmember:popmember[4]) #排序
         population = populationTmp[:populationSize]
 
         parent,pidx = GaForLab.selcet(population)
-        offspring1 = parent.copy()
+        offspring1 = copy.deepcopy(parent)
         GaForLab.mutate(offspring1)
-        offspring2 = offspring1.copy()
+        offspring2 = copy.deepcopy(offspring1)
         GaForLab.mutate(offspring2)
         print('============parent fit:%f================='%(parent[4]))
 
@@ -84,14 +86,18 @@ if __name__ == "__main__":
             print('================return offspring1================')
             print('=========popindex:%d=========='%(best[6]))
             saveDir = './model/' + str(offspring1[6])
-            saveName = 'ckp-'+str(epoch)+'-'+str(offspring1[3][0])+'-'+str(offspring1[3][1])+'-'+'offspring1'+'.pth'
+            saveName = 'ckp-'+str(epoch)+'-'+str(offspring1[3][0])+'-' \
+            + str(offspring1[3][1])+'-'+str(offspring1[4])+'offspring1'+'.pth'
+
             torch.save(offspringNet1.state_dict(), saveDir+'/'+saveName)
 
         elif best == offspring2:
             print('================return offspring2================')
             print('=========popindex:%d=========='%(best[6]))
             saveDir = './model/' + str(offspring2[6])
-            saveName = 'ckp-'+str(epoch)+'-'+str(offspring2[3][0])+'-'+str(offspring2[3][1])+'-'+'offspring2'+'.pth'
+            saveName = 'ckp-'+str(epoch)+'-'+str(offspring2[3][0])+'-' \
+            + str(offspring2[3][1])+'-'+str(offspring2[4])+'offspring2'+'.pth'
+
             torch.save(offspringNet2.state_dict(), saveDir+'/'+saveName)
 
         os.mkdir('./logs/'+str(gen))
