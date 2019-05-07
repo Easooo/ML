@@ -57,10 +57,11 @@ class Genetic(object):
     # chromosome[0]:隐含层数
     # chromosome[1]:网络结构
     # chromosome[2]:学习率
-    # chromosome[3]:[0]:正确率 [1]:超参数数量
-    # chromosome[4]:适应度
-    # chromosome[5]:是否变异
-    # chromosome[6]:索引,以便于演化到最后的时候容易超出是哪一个并且和模型对应
+    # chromosome[3]:正确率
+    # chromosome[4]:超参数数量
+    # chromosome[5]:适应度
+    # chromosome[6]:一个list，存放变异类型
+    # chromosome[7]:索引,以便于演化到最后的时候容易超出是哪一个并且和模型对应
     #=================================================================================
             cnnFlag = True
             i = 0
@@ -90,13 +91,14 @@ class Genetic(object):
             net.append(subNet)
             chromosome.append(net)
             lr = np.random.rand()/100   #随机初始化学习率
-            chromosome.append(lr)
-            acc,netParaNums = 0,0    #准确率和网络参数数量
+            chromosome.append(lr)    #2 学习率
+            acc,netParaNums = 0,0   #准确率和网络参数数量
             fitness = 0  #初始化适应度
-            chromosome.append([acc,netParaNums])
-            chromosome.append(fitness)
-            chromosome.append('None')        #变异
-            chromosome.append(popSize)         #每个index
+            chromosome.append(acc)   #3 准确率
+            chromosome.append(netParaNums) #4 参数数量
+            chromosome.append(fitness)  #5 适应度
+            chromosome.append([])    #6 变异
+            chromosome.append(popSize)   #7  每个index
             popTotal.append(chromosome)
         return popTotal       
 
@@ -173,7 +175,7 @@ class Genetic(object):
         if getChoiceBool(0.5): #学习率
             newLr = np.random.rand()/100
             popMember[2] = newLr
-            popMember[5] = 'lr'
+            popMember[6].append('lr')
             return 
         else:  #网络层结构的变异        
             opFuncDict = {'add':mutateAddLayer,'rep':mutateReplaceLayer,'del':mutateDelLayer} 
@@ -194,10 +196,10 @@ class Genetic(object):
                 if operation == 'add':
                     popMember[0] += 1
                     popMember[1] = newLayer
-                    popMember[5] = 'add'  
+                    popMember[6].append('add')
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = 'rep'
+                    popMember[6].append('rep')
 
             elif 1 < popMember[0] and popMember[0] < maxLayer:  #大于一层小于最大层
                 operationType = ['add','rep','del']  #不能删除
@@ -216,15 +218,15 @@ class Genetic(object):
                 if operation == 'add':
                     popMember[0] += 1
                     popMember[1] = newLayer
-                    popMember[5] = 'add'
+                    popMember[6].append('add')
 
                 elif operation == 'del':
                     popMember[0] -= 1
                     popMember[1] = newLayer
-                    popMember[5] = 'del'
+                    popMember[6].append('del')
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = 'rep'                   
+                    popMember[6].append('rep')
 
 
             else:   #等于最大层数
@@ -240,10 +242,10 @@ class Genetic(object):
                 if operation == 'del':
                     popMember[0] -= 1
                     popMember[1] = newLayer
-                    popMember[5] = 'del'
+                    popMember[6].append('del')
                 else:
                     popMember[1] = newLayer
-                    popMember[5] = 'rep'   
+                    popMember[6].append('rep')
 
     def selcet(self,population,tournaSize=7):
         '''
@@ -259,7 +261,7 @@ class Genetic(object):
         populationNp = np.array(population)
         tournaPop = list(populationNp[idx])   #选择出来的一组锦标赛竞争者
         tournaPopidx = list(zip(tournaPop,idx))
-        tournaPopSort = sorted(tournaPopidx,key=lambda popmember:popmember[0][4]) #fitness在第4
+        tournaPopSort = sorted(tournaPopidx,key=lambda popmember:popmember[0][5]) #fitness在第5
         #返回fitness最小的一个popmember和在原来的种群中的index
         return list(tournaPopSort[0][0]),int(tournaPopSort[0][1])  
 
@@ -269,9 +271,9 @@ def getFitness(popMember):
     计算适应度,适应度的值越小越好
     '''
     AF = 1
-    acc,netParaNums = popMember[3][0],popMember[3][1]
+    acc,netParaNums = popMember[3],popMember[4]
     fitness = (1 - acc) + AF*(1 - 1/netParaNums)
-    popMember[4] = fitness   #修改fitness
+    popMember[5] = fitness   #修改fitness
     return fitness
 
 def getChoiceBool(choiceRate=0.5):

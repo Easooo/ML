@@ -8,7 +8,7 @@ import os
 import pandas as pd 
 
 
-def trainStep(popMember,popIndex,inputSize,inputChannel,epoch,transformsList,dataType):
+def trainStep(popMember,inputSize,inputChannel,epoch,transformsList,dataType,oldModelDir=None):
     '''
     注意:softmax和其它激活函数 使用的损失函数不一样！需要额外判断
     '''
@@ -18,6 +18,9 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch,transformsList,dat
     lossFunc.cuda()  
     trainLoader,testloader = dataLoader(transformsList[0],transformsList[1],dataType=dataType,trainBatchSize=256,testBatchSize=64)
     autoNet = makeNet(popMember,inputSize,inputChannel)
+    if oldModelDir is not None:
+        autoNet.load_state_dict(torch.load(oldModelDir))
+        print('load model dir:',oldModelDir)
     # device = torch.device("cpu")
     optimizer = optim.Adam(autoNet.parameters(),lr=popMember[2])   #ADAM优化器
     autoNet.cuda()
@@ -36,8 +39,8 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch,transformsList,dat
             optimizer.step()
             sum_loss += loss.item()
 
-            if (i % 50 == 0) and (i != 0):
-                print("loss:%f,epoch:%d,popindex:%d,last act:%s"%(sum_loss/100,ep,popIndex,netList[-1][-1]))
+            if (i % 100 == 0) and (i != 0):
+                print("loss:%f,epoch:%d,popindex:%d,last act:%s"%(sum_loss/100,ep,popMember[7],netList[-1][-1]))
                 sum_loss = 0
         #计算准确率
         
@@ -58,7 +61,7 @@ def trainStep(popMember,popIndex,inputSize,inputChannel,epoch,transformsList,dat
 
 
     totalPara = sum(p.numel() for p in autoNet.parameters())
-    popMember[3][0],popMember[3][1] = acc,totalPara
+    popMember[3],popMember[4] = acc,totalPara
     # saveDir = './model/' + str(popIndex)
     # saveName = 'ckp-'+str(epoch)+'-'+str(acc)+'-'+str(totalPara)+'-'+'.pth'
     # torch.save(autoNet.state_dict(), saveDir+'/'+saveName)
@@ -78,15 +81,17 @@ def savePopCsv(savePath,pop):
     nHiden = [i[0] for i in pop]
     netList = [i[1] for i in pop]
     lrList = [i[2] for i in pop]
-    accParaList = [i[3] for i in pop]
-    fitnessList = [i[4] for i in pop]
-    mutateList = [i[5] for i in pop]
-    indexList = [i[6] for i in pop]
+    accList = [i[3] for i in pop]
+    paraList = [i[4] for i in pop]
+    fitnessList = [i[5] for i in pop]
+    mutateList = [i[6] for i in pop]
+    indexList = [i[7] for i in pop]
 
     saveDict = {'layernums':nHiden,
                 'net':netList,
                 'lr':lrList,
-                'acc&ParaList':accParaList,
+                'accList':accList,
+                'ParaList':paraList,
                 'fitness':fitnessList,
                 'mutate':mutateList,
                 'popindex':indexList

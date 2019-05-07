@@ -20,10 +20,19 @@ def evaluate(pop,inputSize,inputChannel,epoch,gen,tfList,dataType):
     计算种群
     '''
     for popMember in pop:
-        popNet = train.trainStep(popMember,popMember[6],inputSize,inputChannel,epoch,tfList,dataType)
+        oldModeldir = None
+        saveDir = './model/' + str(popMember[7])
+        fileList = os.listdir(saveDir)
+        if len(fileList) != 0:
+            oldModeldir = saveDir + '/' + fileList[0]
+        popNet = train.trainStep(popMember,inputSize,inputChannel,epoch,tfList,dataType,oldModeldir)
         fitness = Ga.getFitness(popMember)
-        saveDir = './model/' + str(popMember[6])
-        saveName = str(gen)+'-'+str(epoch)+'-'+str(popMember[3][0])+'-'+str(popMember[3][1])+'-'+str(popMember[4])+'.pth'
+        if oldModeldir is not None:
+            os.remove(oldModeldir)
+        saveName = str(gen)+'-'+str(popMember[3])+'-'+\
+                str(popMember[4])+'-'+str(popMember[5])+'.pth'
+        with open(saveDir+'/'+'modellog.txt','a+') as f:
+            f.write(str(gen)+'-'+str(popMember[3])+'-'+str(popMember[4])+'-'+str(popMember[5])+'\n')
         torch.save(popNet.state_dict(), saveDir+'/'+saveName)
 
 if __name__ == "__main__":
@@ -33,33 +42,30 @@ if __name__ == "__main__":
     epoch = 3
     populationSize = 100
 
-    print('input dataType:')
-    dataType = input()
+    dataType = input('input dataType:')
 
-    print('inputsize:')
-    inputSize = input()
+    inputSize = input('inputsize:')
     inputSize = int(inputSize)
 
-    print('inputchannel:')
-    inputChannel = input()
+    inputChannel = input('inputchannel:')
     inputChannel = int(inputChannel)
 
     tfList = allTransformList(dataType)
 
     population = GaForLab.createPopulation(populationSize)  #初始化种群
-    createDir(100)   #创建文件夹
+    createDir(populationSize)   #创建文件夹
     # evaluate(population,inputSize=28,inputChannel=1,epoch=epoch,gen=10000)  #test
     train.savePopCsv('./logs/'+'initalpop.csv',population)
     for gen in range(generation):
-
+        print('===================gen:%d===================='%(gen))
         if gen !=0 :
             epoch += 1
             populationSize = populationSize - 10
-
-        print('===================gen:%d===================='%(gen))
-        evaluate(population,inputSize,inputChannel,epoch,gen,tfList=tfList,dataType=dataType)
+            evaluate(population,inputSize,inputChannel,1,gen,tfList=tfList,dataType=dataType)
+        else:
+            evaluate(population,inputSize,inputChannel,epoch,gen,tfList=tfList,dataType=dataType)
         populationTmp = copy.deepcopy(population)
-        populationTmp = sorted(populationTmp,key=lambda popmember:popmember[4]) #排序
+        populationTmp = sorted(populationTmp,key=lambda popmember:popmember[5]) #排序
         population = populationTmp[:populationSize]
 
         parent,pidx = GaForLab.selcet(population)
@@ -67,37 +73,49 @@ if __name__ == "__main__":
         GaForLab.mutate(offspring1)
         offspring2 = copy.deepcopy(offspring1)
         GaForLab.mutate(offspring2)
-        print('============parent fit:%f================='%(parent[4]))
+        print('============parent fit:%f================='%(parent[5]))
 
         print('====================mutate1=======================')
-        offspringNet1 = train.trainStep(offspring1,offspring1[6],inputSize,inputChannel,epoch,tfList,dataType)
+        offspringNet1 = train.trainStep(offspring1,inputSize,inputChannel,epoch,tfList,dataType)
         offspringFit1 = Ga.getFitness(offspring1)
-        print('============off1 fit:%f================='%(offspring1[4]))
+        print('============off1 fit:%f================='%(offspring1[5]))
 
         print('====================mutate2=======================')
-        offspringNet2 = train.trainStep(offspring2,offspring2[6],inputSize,inputChannel,epoch,tfList,dataType)
+        offspringNet2 = train.trainStep(offspring2,inputSize,inputChannel,epoch,tfList,dataType)
         offspringFit2 = Ga.getFitness(offspring2)
-        print('============off2 fit:%f================='%(offspring2[4]))
-        mutateList = sorted([parent,offspring1,offspring2],key=lambda popmember:popmember[4])
+        print('============off2 fit:%f================='%(offspring2[5]))
+        mutateList = sorted([parent,offspring1,offspring2],key=lambda popmember:popmember[5])
         best = mutateList[0]
         population[pidx] = best
 
         if best == offspring1:
             print('================return offspring1================')
-            print('=========popindex:%d=========='%(best[6]))
-            saveDir = './model/' + str(offspring1[6])
-            saveName = 'ckp-'+str(epoch)+'-'+str(offspring1[3][0])+'-' \
-            + str(offspring1[3][1])+'-'+str(offspring1[4])+'offspring1'+'.pth'
-
+            print('=========popindex:%d=========='%(best[7]))
+            oldModeldir = None
+            saveDir = './model/' + str(offspring1[7])
+            fileList = os.listdir(saveDir)
+            if len(fileList) != 0:
+                oldModeldir = saveDir + '/' + fileList[0]
+                os.remove(oldModeldir)        
+            saveName = 'm-'+str(epoch)+'-'+str(offspring1[3])+'-' \
+            + str(offspring1[4])+'-'+str(offspring1[5])+'offspring1'+'.pth'
+            with open(saveDir+'/'+'modellog.txt','a+') as f:
+                f.write(str(gen)+'-'+str(offspring1[3])+'-'+str(offspring1[4])+'-'+str(offspring1[5])+'\n')
             torch.save(offspringNet1.state_dict(), saveDir+'/'+saveName)
 
         elif best == offspring2:
             print('================return offspring2================')
-            print('=========popindex:%d=========='%(best[6]))
-            saveDir = './model/' + str(offspring2[6])
-            saveName = 'ckp-'+str(epoch)+'-'+str(offspring2[3][0])+'-' \
-            + str(offspring2[3][1])+'-'+str(offspring2[4])+'offspring2'+'.pth'
-
+            print('=========popindex:%d=========='%(best[7]))
+            oldModeldir = None
+            saveDir = './model/' + str(offspring2[7])
+            fileList = os.listdir(saveDir)
+            if len(fileList) != 0:
+                oldModeldir = saveDir + '/' + fileList[0]
+                os.remove(oldModeldir) 
+            saveName = 'm-'+str(epoch)+'-'+str(offspring2[3])+'-' \
+            + str(offspring2[4])+'-'+str(offspring2[5])+'offspring2'+'.pth'
+            with open(saveDir+'/'+'modellog.txt','a+') as f:
+                f.write(str(gen)+'-'+str(offspring2[3])+'-'+str(offspring2[4])+'-'+str(offspring2[5])+'\n')
             torch.save(offspringNet2.state_dict(), saveDir+'/'+saveName)
 
         os.mkdir('./logs/'+str(gen))
