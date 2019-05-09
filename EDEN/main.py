@@ -23,8 +23,13 @@ def evaluate(pop,inputSize,inputChannel,epoch,gen,tfList,dataType):
         oldModeldir = None
         saveDir = './model/' + str(popMember[7])
         fileList = os.listdir(saveDir)
+
         if len(fileList) != 0:
-            oldModeldir = saveDir + '/' + fileList[0]
+            for i in fileList:
+                if(os.path.splitext(i)[1]) == '.pth':
+                    oldModeldir = saveDir + '/' + i
+
+        print('======old model:%s======'%(oldModeldir)) 
         popNet = train.trainStep(popMember,inputSize,inputChannel,epoch,tfList,dataType,oldModeldir)
         fitness = Ga.getFitness(popMember)
         if oldModeldir is not None:
@@ -32,7 +37,7 @@ def evaluate(pop,inputSize,inputChannel,epoch,gen,tfList,dataType):
         saveName = str(gen)+'-'+str(popMember[3])+'-'+\
                 str(popMember[4])+'-'+str(popMember[5])+'.pth'
         with open(saveDir+'/'+'modellog.txt','a+') as f:
-            f.write(str(gen)+'-'+str(popMember[3])+'-'+str(popMember[4])+'-'+str(popMember[5])+'\n')
+            f.write(saveName+'\n')
         torch.save(popNet.state_dict(), saveDir+'/'+saveName)
 
 if __name__ == "__main__":
@@ -94,13 +99,16 @@ if __name__ == "__main__":
             oldModeldir = None
             saveDir = './model/' + str(offspring1[7])
             fileList = os.listdir(saveDir)
+
             if len(fileList) != 0:
-                oldModeldir = saveDir + '/' + fileList[0]
-                os.remove(oldModeldir)        
+                for i in fileList:
+                    if(os.path.splitext(i)[1]) == '.pth':
+                        oldModeldir = saveDir + '/' + i
+                        os.remove(oldModeldir)        
             saveName = 'm-'+str(epoch)+'-'+str(offspring1[3])+'-' \
-            + str(offspring1[4])+'-'+str(offspring1[5])+'offspring1'+'.pth'
+            + str(offspring1[4])+'-'+str(offspring1[5])+'-offspring1'+'.pth'
             with open(saveDir+'/'+'modellog.txt','a+') as f:
-                f.write(str(gen)+'-'+str(offspring1[3])+'-'+str(offspring1[4])+'-'+str(offspring1[5])+'\n')
+                f.write(str(gen)+saveName+'\n')
             torch.save(offspringNet1.state_dict(), saveDir+'/'+saveName)
 
         elif best == offspring2:
@@ -109,13 +117,17 @@ if __name__ == "__main__":
             oldModeldir = None
             saveDir = './model/' + str(offspring2[7])
             fileList = os.listdir(saveDir)
+
             if len(fileList) != 0:
-                oldModeldir = saveDir + '/' + fileList[0]
-                os.remove(oldModeldir) 
+                for i in fileList:
+                    if(os.path.splitext(i)[1]) == '.pth':
+                        oldModeldir = saveDir + '/' + i
+                        os.remove(oldModeldir)  
+
             saveName = 'm-'+str(epoch)+'-'+str(offspring2[3])+'-' \
-            + str(offspring2[4])+'-'+str(offspring2[5])+'offspring2'+'.pth'
+            + str(offspring2[4])+'-'+str(offspring2[5])+'-offspring2'+'.pth'
             with open(saveDir+'/'+'modellog.txt','a+') as f:
-                f.write(str(gen)+'-'+str(offspring2[3])+'-'+str(offspring2[4])+'-'+str(offspring2[5])+'\n')
+                f.write(str(gen)+saveName+'\n')
             torch.save(offspringNet2.state_dict(), saveDir+'/'+saveName)
 
         os.mkdir('./logs/'+str(gen))
