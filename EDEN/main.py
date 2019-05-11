@@ -108,7 +108,7 @@ if __name__ == "__main__":
             saveName = 'm-'+str(epoch)+'-'+str(offspring1[3])+'-' \
             + str(offspring1[4])+'-'+str(offspring1[5])+'-offspring1'+'.pth'
             with open(saveDir+'/'+'modellog.txt','a+') as f:
-                f.write(str(gen)+saveName+'\n')
+                f.write(str(gen)+'-'+saveName+'\n')
             torch.save(offspringNet1.state_dict(), saveDir+'/'+saveName)
 
         elif best == offspring2:
@@ -127,7 +127,7 @@ if __name__ == "__main__":
             saveName = 'm-'+str(epoch)+'-'+str(offspring2[3])+'-' \
             + str(offspring2[4])+'-'+str(offspring2[5])+'-offspring2'+'.pth'
             with open(saveDir+'/'+'modellog.txt','a+') as f:
-                f.write(str(gen)+saveName+'\n')
+                f.write(str(gen)+'-'+saveName+'\n')
             torch.save(offspringNet2.state_dict(), saveDir+'/'+saveName)
 
         os.mkdir('./logs/'+str(gen))

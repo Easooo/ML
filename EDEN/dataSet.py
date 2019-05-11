@@ -49,4 +49,9 @@ def allTransformList(dataType):
         tList.append(transforMnist)
         tList.append(transforMnist)
         return tList
+
         
+if __name__ == "__main__":
+    t = tv.datasets.MNIST(root='./data/',train=True,transform=tv.transforms.ToTensor(),download=True)
+    pass
+    torch.utils.data.sampler.SequentialSampler
